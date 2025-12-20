@@ -1,7 +1,7 @@
 use crate::model::LlmResponse;
 use crate::providers::llm::LlmClient;
 use async_trait::async_trait;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -18,6 +18,7 @@ impl TraceClient {
         let reader = std::io::BufReader::new(file);
 
         let mut traces = HashMap::new();
+        let mut request_ids = HashSet::new();
         use std::io::BufRead;
 
         for (i, line) in reader.lines().enumerate() {
@@ -33,10 +34,13 @@ impl TraceClient {
 
             #[derive(serde::Deserialize)]
             struct TraceEntry {
+                schema_version: Option<u32>,
+                r#type: Option<String>,
+                request_id: Option<String>,
                 prompt: String,
+                // context, meta, model support
                 text: Option<String>,
-                response: Option<String>, // alias
-                // metadata
+                response: Option<String>,
                 #[serde(default)]
                 meta: serde_json::Value,
                 model: Option<String>,
@@ -46,7 +50,22 @@ impl TraceClient {
             let entry: TraceEntry = serde_json::from_str(&line)
                 .map_err(|e| anyhow::anyhow!("line {}: failed to parse trace: {}", i + 1, e))?;
 
-            let text = entry.text.or(entry.response).unwrap_or_default();
+            // Validate Schema
+            if let Some(v) = entry.schema_version {
+                if v != 1 {
+                    return Err(anyhow::anyhow!("line {}: unsupported schema_version {}", i + 1, v));
+                }
+            }
+            if let Some(t) = &entry.r#type {
+                if t != "verdict.trace" {
+                    return Err(anyhow::anyhow!("line {}: unsupported type {}", i + 1, t));
+                }
+            }
+
+            let text = match entry.text.or(entry.response) {
+                Some(t) => t,
+                None => return Err(anyhow::anyhow!("line {}: missing `text`/`response` field", i + 1)),
+            };
 
             let resp = LlmResponse {
                 text,
@@ -55,6 +74,14 @@ impl TraceClient {
                 cached: false,
                 meta: entry.meta,
             };
+
+            // Uniqueness Check
+            if let Some(rid) = &entry.request_id {
+                if request_ids.contains(rid) {
+                    return Err(anyhow::anyhow!("line {}: Duplicate request_id {}", i + 1, rid));
+                }
+                request_ids.insert(rid.clone());
+            }
 
             if traces.contains_key(&entry.prompt) {
                 return Err(anyhow::anyhow!(
@@ -131,6 +158,50 @@ mod tests {
         let client = TraceClient::from_path(tmp.path())?;
         let result = client.complete("does not exist", None).await;
         assert!(result.is_err());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_trace_client_duplicate_prompt() -> anyhow::Result<()> {
+        let mut tmp = NamedTempFile::new()?;
+        writeln!(tmp, r#"{{"prompt": "dup", "response": "1"}}"#)?;
+        writeln!(tmp, r#"{{"prompt": "dup", "response": "2"}}"#)?;
+
+        let result = TraceClient::from_path(tmp.path());
+        assert!(result.is_err());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_trace_client_duplicate_request_id() -> anyhow::Result<()> {
+        let mut tmp = NamedTempFile::new()?;
+        // different prompts, same ID
+        writeln!(tmp, r#"{{"request_id": "id1", "prompt": "p1", "response": "1"}}"#)?;
+        writeln!(tmp, r#"{{"request_id": "id1", "prompt": "p2", "response": "2"}}"#)?;
+
+        let result = TraceClient::from_path(tmp.path());
+        assert!(result.is_err());
+        assert!(result.err().unwrap().to_string().contains("Duplicate request_id"));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_trace_schema_validation() -> anyhow::Result<()> {
+        let mut tmp = NamedTempFile::new()?;
+        // Bad version
+        writeln!(tmp, r#"{{"schema_version": 2, "prompt": "p", "response": "r"}}"#)?;
+        assert!(TraceClient::from_path(tmp.path()).is_err());
+
+        let mut tmp2 = NamedTempFile::new()?;
+        // Bad type
+        writeln!(tmp2, r#"{{"type": "wrong", "prompt": "p", "response": "r"}}"#)?;
+        assert!(TraceClient::from_path(tmp2.path()).is_err());
+
+        let mut tmp3 = NamedTempFile::new()?;
+        // Missing text/response
+        writeln!(tmp3, r#"{{"prompt": "p"}}"#)?;
+        assert!(TraceClient::from_path(tmp3.path()).is_err());
+
         Ok(())
     }
 }

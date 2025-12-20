@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 - **Trace Injection**: Run evaluations offline using `--trace-file <path.jsonl>`.
   - Supports strictly deterministic replay of LLM interactions.
-  - Validates uniqueness of prompts to prevent ambiguity.
+  - **Hardened Schema**: Enforces Trace Schema v1 (version, type) and unique `request_id`/`prompt`.
 - **OpenTelemetry Export**: New `--otel-jsonl` flag for `verdict ci`.
   - Adheres to OTel GenAI Semantic Conventions.
   - Attributes include `gen_ai.system`, `verdict.status`, `verdict.score`.
