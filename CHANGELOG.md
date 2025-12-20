@@ -8,7 +8,8 @@ All notable changes to this project will be documented in this file.
 ### Added
 - **Redaction**: Added `--redact-prompts` flag to CLI to ensure PII hygiene in artifacts.
 - **CI/CD**: GitHub Actions workflow (`verdict.yml`) running smoke tests in deterministic Replay Mode.
-- **Metrics**: Added `regex_match` and `regex_not_match` metrics with support for flags (e.g., `i`, `m`).
+- **Metrics**: Added `regex_match` (PR5) and `json_schema` (PR6) metrics.
+- **Config**: Added support for relative file paths in configuration (resolves relative to config file).
 - **Strict Mode**: Added `--strict` flag to fail CI on `Warn` or `Flaky` statuses (Exit 1). Default is non-blocking.
 - **Reporting**: JUnit reports now mark `Warn`/`Flaky` as passing tests with `<system-out>` logs, improving CI visibility.
 - **CLI Refactor**: Unified runner initialization and clarified help strings.

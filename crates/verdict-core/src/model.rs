@@ -59,9 +59,11 @@ pub enum Expected {
         flags: Vec<String>,
     },
 
-    // v0.3 hooks (placeholders)
+    // v0.3 hooks
     JsonSchema {
         json_schema: String,
+        #[serde(default)]
+        schema_file: Option<String>,
     },
     SemanticSimilarityTo {
         semantic_similarity_to: String,
