@@ -2,12 +2,17 @@
 
 **Verdict** is a CI-first **PR regression gate** for RAG pipelines. It helps you verify LLM-based applications deterministically in CI/CD without accruing massive bills or dealing with flake.
 
+## Documentation
+- [**User Guide**](docs/user-guide.md): Comprehensive concepts, config reference, and CI usage.
+- [**CHANGELOG.md**](CHANGELOG.md): Release history.
+- [**Architecture Draft**](docs/architecture_draft.md): Design philosophy.
+- **JUnit/SARIF Support**: Native integration with GitHub Actions, GitLab CI, etc.
+
 ## Features (MVP v0.2.0)
 
 - **Trace Injection** (`--trace-file`): Replay production/staging logs completely offline. No API keys required in CI.
 - **OpenTelemetry Export** (`--otel-jsonl`): Emits evaluation results using [GenAI Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/).
 - **VCR Caching**: Caches live LLM responses to SQLite for fast local iteration.
-- **JUnit/SARIF Support**: Native integration with GitHub Actions, GitLab CI, etc.
 
 ## Installation
 
