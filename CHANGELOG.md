@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ## [0.2.0] - 2025-12-20
 ### Added
+- **Redaction**: Added `--redact-prompts` flag to CLI to ensure PII hygiene in artifacts.
 - **Trace Injection**: Run evaluations offline using `--trace-file <path.jsonl>`.
   - Supports strictly deterministic replay of LLM interactions.
   - **Hardened Schema**: Enforces Trace Schema v1 (version, type) and unique `request_id`/`prompt`.

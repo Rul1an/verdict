@@ -38,6 +38,9 @@ struct RunArgs {
 
     #[arg(long)]
     trace_file: Option<PathBuf>,
+
+    #[arg(long)]
+    redact_prompts: bool,
 }
 
 #[derive(Parser, Clone)]
@@ -61,6 +64,9 @@ struct CiArgs {
 
     #[arg(long)]
     trace_file: Option<PathBuf>,
+
+    #[arg(long)]
+    redact_prompts: bool,
 }
 
 #[derive(Parser)]
@@ -208,7 +214,7 @@ async fn cmd_ci(args: CiArgs) -> anyhow::Result<i32> {
 
     let otel_cfg = verdict_core::otel::OTelConfig {
         jsonl_path: args.otel_jsonl.clone(),
-        redact_prompts: false,
+        redact_prompts: args.redact_prompts,
     };
     let _ = verdict_core::otel::export_jsonl(&otel_cfg, &cfg.suite, &artifacts.results);
 

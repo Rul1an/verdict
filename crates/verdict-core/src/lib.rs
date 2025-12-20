@@ -6,6 +6,7 @@ pub mod errors;
 pub mod metrics_api;
 pub mod model;
 pub mod otel;
+pub mod redaction;
 pub mod providers;
 pub mod quarantine;
 pub mod report;
