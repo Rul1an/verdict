@@ -1,0 +1,16 @@
+version: 1
+suite: "ci_smoke_test"
+model: "trace" # Ignored by trace-file typically, but good practice
+tests:
+  - id: "ci_echo"
+    input:
+      prompt: "ci_echo_hello"
+    expected:
+      type: must_contain
+      must_contain: ["Hello"]
+  - id: "ci_calc"
+    input:
+      prompt: "ci_calc_sum"
+    expected:
+      type: must_contain
+      must_contain: ["42"]

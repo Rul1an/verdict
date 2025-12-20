@@ -1,0 +1,2 @@
+{"schema_version": 1, "type": "verdict.trace", "request_id": "ci-1", "prompt": "ci_echo_hello", "response": "Hello World"}
+{"schema_version": 1, "type": "verdict.trace", "request_id": "ci-2", "prompt": "ci_calc_sum", "response": "The sum is 42."}

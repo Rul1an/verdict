@@ -1,0 +1,51 @@
+name: Verdict CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  assess:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Verdict CI (Replay)
+        run: |
+          target/release/verdict ci \
+            --config ci-eval.yaml \
+            --trace-file traces/ci.jsonl \
+            --junit junit.xml \
+            --sarif sarif.json \
+            --otel-jsonl otel.jsonl \
+            --redact-prompts
+
+      - name: Upload Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verdict-reports
+          path: |
+            junit.xml
+            sarif.json
+            run.json
+            otel.jsonl
+
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+        continue-on-error: true
+        with:
+          sarif_file: sarif.json

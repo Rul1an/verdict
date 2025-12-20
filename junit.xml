@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="replay_test">
-  <testcase name="test_failure"><failure message="failed: must_contain"/></testcase>
+<testsuite name="ci_smoke_test">
+  <testcase name="ci_echo"></testcase>
+  <testcase name="ci_calc"></testcase>
 </testsuite>
