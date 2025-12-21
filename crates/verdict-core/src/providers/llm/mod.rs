@@ -10,3 +10,5 @@ pub trait LlmClient: Send + Sync {
     ) -> anyhow::Result<LlmResponse>;
     fn provider_name(&self) -> &'static str;
 }
+
+pub mod openai;

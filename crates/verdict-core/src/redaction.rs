@@ -17,6 +17,39 @@ impl RedactionPolicy {
             s.into()
         }
     }
+
+    pub fn redact_judge_metadata(&self, meta: &mut serde_json::Value) {
+        if !self.redact_prompts {
+            return;
+        }
+
+        if let Some(obj) = meta
+            .pointer_mut("/verdict/judge")
+            .and_then(|v| v.as_object_mut())
+        {
+            for (_, v) in obj.iter_mut() {
+                if let Some(inner) = v.as_object_mut() {
+                    if inner.contains_key("rationale") {
+                        inner.insert("rationale".to_string(), serde_json::json!("[REDACTED]"));
+                    }
+                }
+            }
+        }
+
+        // 2. Redact from TestResultRow.details style (metrics output)
+        if let Some(metrics) = meta.pointer_mut("/metrics").and_then(|v| v.as_object_mut()) {
+            for (_, metric_res) in metrics.iter_mut() {
+                if let Some(details) = metric_res
+                    .get_mut("details")
+                    .and_then(|v| v.as_object_mut())
+                {
+                    if details.contains_key("rationale") {
+                        details.insert("rationale".to_string(), serde_json::json!("[REDACTED]"));
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]

@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct Store {
-    conn: Arc<Mutex<Connection>>,
+    pub(crate) conn: Arc<Mutex<Connection>>,
 }
 
 impl Store {

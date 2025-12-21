@@ -71,6 +71,16 @@ inputs:
     required: false
     default: ""
 
+  baseline:
+    description: "Path to baseline.json for regression checking."
+    required: false
+    default: ""
+
+  export_baseline:
+    description: "Path to export updated baseline.json to."
+    required: false
+    default: ""
+
   upload_artifacts:
     description: "Upload junit/sarif/run.json/otel.jsonl as workflow artifacts."
     required: false
@@ -80,6 +90,16 @@ inputs:
     description: "Artifact name if upload_artifacts is true."
     required: false
     default: "verdict-reports"
+
+  upload_exported_baseline:
+    description: "If 'true', uploads the exported baseline as an artifact."
+    required: false
+    default: "false"
+
+  exported_baseline_artifact_name:
+    description: "Artifact name for exported baseline."
+    required: false
+    default: "verdict-baseline"
 
   upload_sarif:
     description: "Upload SARIF to GitHub Code Scanning."
@@ -193,6 +213,14 @@ runs:
           cmd+=(--otel-jsonl "${{ inputs.otel_jsonl }}")
         fi
 
+        if [ -n "${{ inputs.baseline }}" ]; then
+          cmd+=(--baseline "${{ inputs.baseline }}")
+        fi
+
+        if [ -n "${{ inputs.export_baseline }}" ]; then
+          cmd+=(--export-baseline "${{ inputs.export_baseline }}")
+        fi
+
         if [ "${{ inputs.redact_prompts }}" = "true" ]; then
           cmd+=(--redact-prompts)
         fi
@@ -214,7 +242,16 @@ runs:
           ${{ inputs.junit }}
           ${{ inputs.sarif }}
           run.json
+          run.json
           ${{ inputs.otel_jsonl }}
+
+    - name: Upload Exported Baseline
+      if: ${{ inputs.upload_exported_baseline == 'true' && inputs.export_baseline != '' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.exported_baseline_artifact_name }}
+        path: ${{ inputs.export_baseline }}
+        if-no-files-found: warn
 
     - name: Upload SARIF (Code Scanning)
       if: >-

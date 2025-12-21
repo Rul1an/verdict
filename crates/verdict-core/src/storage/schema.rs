@@ -39,4 +39,14 @@ CREATE TABLE IF NOT EXISTS embeddings (
   vec BLOB NOT NULL,
   created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS judge_cache (
+  key TEXT PRIMARY KEY,
+  provider TEXT NOT NULL,
+  model TEXT NOT NULL,
+  rubric_id TEXT NOT NULL,
+  rubric_version TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  payload_json TEXT NOT NULL
+);
 "#;

@@ -34,6 +34,8 @@ pub struct Runner {
     pub policy: RunPolicy,
     pub embedder: Option<Arc<dyn crate::providers::embedder::Embedder>>,
     pub refresh_embeddings: bool,
+    pub judge: Option<crate::judge::JudgeService>,
+    pub baseline: Option<crate::baseline::Baseline>,
 }
 
 impl Runner {
@@ -201,6 +203,7 @@ impl Runner {
 
         // Semantic Enrichment
         self.enrich_semantic(tc, &mut resp).await?;
+        self.enrich_judge(tc, &mut resp).await?;
 
         let mut final_status = TestStatus::Pass;
         let mut final_score: Option<f64> = None;
@@ -224,6 +227,18 @@ impl Runner {
                 final_status = TestStatus::Fail;
                 msg = format!("failed: {}", m.name());
                 break;
+            }
+        }
+
+        // Post-metric baseline check
+        if let Some(baseline) = &self.baseline {
+            if let Some((new_status, new_msg)) =
+                self.check_baseline_regressions(tc, cfg, &details, &self.metrics, baseline)
+            {
+                if matches!(new_status, TestStatus::Fail | TestStatus::Warn) {
+                    final_status = new_status;
+                    msg = new_msg;
+                }
             }
         }
 
@@ -262,7 +277,83 @@ impl Runner {
             policy: self.policy.clone(),
             embedder: self.embedder.clone(),
             refresh_embeddings: self.refresh_embeddings,
+            judge: self.judge.clone(),
+            baseline: self.baseline.clone(),
         }
+    }
+
+    fn check_baseline_regressions(
+        &self,
+        tc: &TestCase,
+        cfg: &EvalConfig,
+        details: &serde_json::Value,
+        metrics: &[Arc<dyn Metric>],
+        baseline: &crate::baseline::Baseline,
+    ) -> Option<(TestStatus, String)> {
+        // Check suite-level defaults
+        let suite_defaults = cfg.settings.thresholding.as_ref();
+
+        for m in metrics {
+            let metric_name = m.name();
+            // Only numeric metrics supported right now
+            let score = details["metrics"][metric_name]["score"].as_f64()?;
+
+            // Determine thresholding config
+            // 1. Metric override (from expected enum - tricky as Metric trait hides this)
+            // For now, let's assume we use suite defaults unless specific metric logic (TODO: pass config down)
+            // Actually, `tc.expected` has the config. We need to parse it.
+
+            let (mode, max_drop) = self.resolve_threshold_config(tc, metric_name, suite_defaults);
+
+            if mode == "relative" {
+                if let Some(base_score) = baseline.get_score(&tc.id, metric_name) {
+                    let delta = score - base_score;
+                    if let Some(drop_limit) = max_drop {
+                        if delta < -drop_limit {
+                            return Some((
+                                TestStatus::Fail,
+                                format!(
+                                    "regression: {} dropped {:.3} (limit: {:.3})",
+                                    metric_name, -delta, drop_limit
+                                ),
+                            ));
+                        }
+                    }
+                } else {
+                    // Missing baseline
+                    return Some((
+                        TestStatus::Warn,
+                        format!("missing baseline for {}/{}", tc.id, metric_name),
+                    ));
+                }
+            }
+        }
+        None
+    }
+
+    fn resolve_threshold_config(
+        &self,
+        tc: &TestCase,
+        metric_name: &str,
+        suite_defaults: Option<&crate::model::ThresholdingSettings>,
+    ) -> (String, Option<f64>) {
+        // Defaults
+        let mut mode = "absolute".to_string();
+        let mut max_drop = None;
+
+        if let Some(s) = suite_defaults {
+            if let Some(m) = &s.mode {
+                mode = m.clone();
+            }
+            max_drop = s.max_drop;
+        }
+
+        // Per-metric overrides
+        // Provide a clumsy match here or better implement a helper on Expected
+        // For MVP, we'll check suite defaults primarily.
+        // Actual implementation requires mapping metric_name to Expected variant fields.
+        // Let's stick to suite defaults for this iteration to get it compiling.
+        (mode, max_drop)
     }
 
     // Embeddings logic
@@ -334,6 +425,35 @@ impl Runner {
         self.store.put_embedding(&key, model_id, &vec)?;
         Ok((vec, "live"))
     }
+
+    async fn enrich_judge(&self, tc: &TestCase, resp: &mut LlmResponse) -> anyhow::Result<()> {
+        use crate::model::Expected;
+
+        let (rubric_id, rubric_version) = match &tc.expected {
+            Expected::Faithfulness { rubric_version, .. } => {
+                ("faithfulness", rubric_version.as_deref())
+            }
+            Expected::Relevance { rubric_version, .. } => ("relevance", rubric_version.as_deref()),
+            _ => return Ok(()),
+        };
+
+        let judge = self.judge.as_ref().ok_or_else(|| {
+            anyhow::anyhow!("config error: judge required but service not initialized")
+        })?;
+
+        judge
+            .evaluate(
+                &tc.id,
+                rubric_id,
+                &tc.input,
+                &resp.text,
+                rubric_version,
+                &mut resp.meta,
+            )
+            .await?;
+
+        Ok(())
+    }
 }
 
 #[derive(Clone)]
@@ -345,6 +465,8 @@ struct RunnerRef {
     policy: RunPolicy,
     embedder: Option<Arc<dyn crate::providers::embedder::Embedder>>,
     refresh_embeddings: bool,
+    judge: Option<crate::judge::JudgeService>,
+    baseline: Option<crate::baseline::Baseline>,
 }
 
 impl RunnerRef {
@@ -362,6 +484,8 @@ impl RunnerRef {
             policy: self.policy.clone(),
             embedder: self.embedder.clone(),
             refresh_embeddings: self.refresh_embeddings,
+            judge: self.judge.clone(),
+            baseline: self.baseline.clone(),
         };
         runner.run_test_with_policy(cfg, tc, run_id).await
     }

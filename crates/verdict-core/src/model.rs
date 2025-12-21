@@ -18,6 +18,15 @@ pub struct Settings {
     pub timeout_seconds: Option<u64>,
     pub cache: Option<bool>,
     pub seed: Option<u64>,
+    pub judge: Option<JudgeConfig>,
+    pub thresholding: Option<ThresholdingSettings>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ThresholdingSettings {
+    pub mode: Option<String>,
+    pub max_drop: Option<f64>,
+    pub min_floor: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -73,10 +82,38 @@ pub enum Expected {
         // canonical field
         #[serde(default = "default_min_score", alias = "threshold")]
         min_score: f64,
+
+        #[serde(default)]
+        thresholding: Option<ThresholdingConfig>,
     },
     JudgeCriteria {
         judge_criteria: serde_json::Value,
     },
+    Faithfulness {
+        #[serde(default = "default_min_score")]
+        min_score: f64,
+        rubric_version: Option<String>,
+        #[serde(default)]
+        thresholding: Option<ThresholdingConfig>,
+    },
+    Relevance {
+        #[serde(default = "default_min_score")]
+        min_score: f64,
+        rubric_version: Option<String>,
+        #[serde(default)]
+        thresholding: Option<ThresholdingConfig>,
+    },
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ThresholdingConfig {
+    pub max_drop: Option<f64>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct JudgeConfig {
+    pub rubric_version: Option<String>,
+    pub samples: Option<u32>,
 }
 
 fn default_min_score() -> f64 {
