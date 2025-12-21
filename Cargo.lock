@@ -2044,6 +2044,7 @@ dependencies = [
  "jsonschema",
  "regex",
  "serde_json",
+ "tokio",
  "verdict-core",
 ]
 

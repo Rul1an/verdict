@@ -30,6 +30,12 @@ pub fn embed_cache_key(model_id: &str, text: &str) -> String {
 }
 
 pub fn cosine_similarity(a: &[f32], b: &[f32]) -> anyhow::Result<f64> {
+    let af: Vec<f64> = a.iter().map(|x| *x as f64).collect();
+    let bf: Vec<f64> = b.iter().map(|x| *x as f64).collect();
+    cosine_similarity_f64(&af, &bf)
+}
+
+pub fn cosine_similarity_f64(a: &[f64], b: &[f64]) -> anyhow::Result<f64> {
     if a.is_empty() || a.len() != b.len() {
         anyhow::bail!(
             "config error: embedding dims mismatch (a={}, b={})",
@@ -42,8 +48,8 @@ pub fn cosine_similarity(a: &[f32], b: &[f32]) -> anyhow::Result<f64> {
     let mut nb = 0.0f64;
 
     for i in 0..a.len() {
-        let x = a[i] as f64;
-        let y = b[i] as f64;
+        let x = a[i];
+        let y = b[i];
         dot += x * y;
         na += x * x;
         nb += y * y;

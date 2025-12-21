@@ -12,3 +12,6 @@ serde_json = "1"
 verdict-core = { version = "0.1.0" }
 regex = "1"
 jsonschema = "0.19"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt"] }
