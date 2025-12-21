@@ -384,9 +384,21 @@ async fn build_runner(
     let embedder: Option<Arc<dyn Embedder>> = match embedder_provider {
         "none" => None,
         "openai" => {
-            let key = std::env::var("OPENAI_API_KEY").map_err(|_| {
-                anyhow::anyhow!("OPENAI_API_KEY environment variable required for openai embedder")
-            })?;
+            let key = match std::env::var("OPENAI_API_KEY") {
+                Ok(k) => k,
+                Err(_) => {
+                    eprint!("OPENAI_API_KEY not set. Enter key: ");
+                    use std::io::Write;
+                    std::io::stderr().flush()?;
+                    let mut input = String::new();
+                    std::io::stdin().read_line(&mut input)?;
+                    let trimmed = input.trim().to_string();
+                    if trimmed.is_empty() {
+                        anyhow::bail!("OpenAI API key is required");
+                    }
+                    trimmed
+                }
+            };
             Some(Arc::new(OpenAIEmbedder::new(
                 embedding_model.to_string(),
                 key,

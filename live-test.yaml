@@ -1,0 +1,11 @@
+version: 1
+suite: "live_semantic_smoke"
+model: "dummy"
+tests:
+  - id: "live_sem_1"
+    input:
+      prompt: "Hello"
+    expected:
+      type: semantic_similarity_to
+      text: "Hi there"
+      threshold: 0.8
