@@ -3,64 +3,74 @@
 Marketplace-ready composite action that:
 - downloads a pinned Verdict binary from GitHub Releases
 - runs `verdict ci` (optionally in replay mode via `--trace-file`)
-- uploads JUnit + SARIF + run artifacts
+- uploads JUnit + SARIF + run artifacts + exported baselines
 - optionally uploads SARIF to GitHub Code Scanning
 
 ## Usage
 
-### Minimal (Replay mode / deterministic)
+### 1. PR Gate (Compare against Baseline)
+Run checks and gate against a `baseline.json` (committed in repo).
+
 ```yaml
 name: Verdict CI
-
-on:
-  pull_request:
-  push:
-    branches: [ "main" ]
-
-permissions:
-  contents: read
-  security-events: write
-
+on: [pull_request]
 jobs:
   verdict:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # For SARIF
     steps:
       - uses: actions/checkout@v4
-
       - uses: verdict-eval/action@v1
         with:
           verdict_version: v0.2.0
           config: ci-eval.yaml
           trace_file: traces/ci.jsonl
-          redact_prompts: "true"
+          baseline: baseline.json # <--- Compare stats against this
 ```
 
-### Strict mode (Warn/Flaky become blocking)
+### 2. Main Branch (Export Baseline)
+Run checks on main and generate a fresh `baseline.json` artifact (to be merged or used by PRs).
 
 ```yaml
+name: Verdict Baseline Export
+on:
+  push:
+    branches: [ "main" ]
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       - uses: verdict-eval/action@v1
         with:
           verdict_version: v0.2.0
           config: ci-eval.yaml
           trace_file: traces/ci.jsonl
-          strict: "true"
+          export_baseline: baseline.json # <--- Generate new baseline
+          upload_artifacts: true
 ```
 
-### Inputs (selected)
+### Inputs
 
-*   `verdict_version` (required): pinned release tag (e.g. `v0.2.0`)
-*   `repo`: where releases live (default `Rul1an/verdict`)
-*   `config`: eval config file (default `ci-eval.yaml`)
-*   `trace_file`: JSONL traces for replay mode (default empty)
-*   `strict`: `true`|`false` (default `false`)
-*   `redact_prompts`: `true`|`false` (default `true`)
-*   `upload_sarif`: `true`|`false` (default `true`)
-*   `upload_artifacts`: `true`|`false` (default `true`)
+| Input | Description | Default |
+| :--- | :--- | :--- |
+| `verdict_version` | **Required**. Release tag to download (e.g. `v0.2.0`). | |
+| `repo` | GitHub repo for releases. | `Rul1an/verdict` |
+| `config` | Eval YAML config path. | `ci-eval.yaml` |
+| `trace_file` | JSONL trace for replay mode. | `""` |
+| `baseline` | Path to known-good baseline JSON (for gating). | `""` |
+| `export_baseline` | Path to write new baseline JSON to. | `""` |
+| `strict` | If `true`, exit 1 on warnings/flakes. | `false` |
+| `redact_prompts` | Redact PII from outputs. | `true` |
+| `upload_sarif` | Upload to GitHub Code Scanning. | `true` |
+| `upload_artifacts` | Upload reports/baseline as artifacts. | `true` |
+| `asset_name` | Override binary filename. | `""` |
 
 ### Required release assets
 
 This action downloads a Verdict release asset:
-
 `verdict-${os}-${arch}.tar.gz`
 
 Examples:
@@ -69,14 +79,6 @@ Examples:
 
 The tarball must contain an executable named `verdict`.
 
-If your asset name differs, pass `asset_name`:
-
-```yaml
-with:
-  verdict_version: v0.2.0
-  asset_name: verdict-x86_64-unknown-linux-musl.tar.gz
-```
-
 ### Notes
-*   On forked PRs, Code Scanning upload may be restricted by permissions. This action sets `continue-on-error: true` for SARIF upload to avoid blocking the job.
-*   For best reproducibility, always pin `verdict_version` to a tag.
+*   On forked PRs, Code Scanning upload may be restricted by permissions. This action sets `continue-on-error: true` for SARIF upload.
+*   For best reproducibility, always pin `verdict_version`.

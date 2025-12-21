@@ -263,24 +263,42 @@ runs:
         echo "Running: ${cmd[*]}"
         "${cmd[@]}"
 
+    - name: Prepare Artifacts
+      id: prep_artifacts
+      if: ${{ inputs.upload_artifacts == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        # Build list of paths that actually exist to avoid upload warnings/errors
+        paths=""
+
+        add_if_exists() {
+          if [ -f "$1" ]; then
+            paths+="$1"$'\n'
+          fi
+        }
+
+        add_if_exists "${{ steps.paths.outputs.junit_path }}"
+        add_if_exists "${{ steps.paths.outputs.sarif_path }}"
+        add_if_exists "${{ steps.paths.outputs.run_json_path }}"
+        add_if_exists "${{ steps.paths.outputs.otel_jsonl_path }}"
+
+        # If user requested baseline export, check if it was generated
+        if [ -n "${{ inputs.export_baseline }}" ]; then
+           add_if_exists "${{ steps.paths.outputs.exported_baseline_path }}"
+        fi
+
+        echo "artifact_paths<<EOF" >> "$GITHUB_OUTPUT"
+        echo "$paths" >> "$GITHUB_OUTPUT"
+        echo "EOF" >> "$GITHUB_OUTPUT"
+
     - name: Upload Artifacts
       if: ${{ inputs.upload_artifacts == 'true' }}
       uses: actions/upload-artifact@v4
       with:
         name: ${{ inputs.artifact_name }}
-        if-no-files-found: warn
-        path: |
-          ${{ steps.paths.outputs.junit_path }}
-          ${{ steps.paths.outputs.sarif_path }}
-          ${{ steps.paths.outputs.run_json_path }}
-          ${{ steps.paths.outputs.otel_jsonl_path }}
-
-    - name: Upload Exported Baseline
-      if: ${{ inputs.upload_exported_baseline == 'true' && inputs.export_baseline != '' }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ inputs.exported_baseline_artifact_name }}
-        path: ${{ steps.paths.outputs.exported_baseline_path }}
+        path: ${{ steps.prep_artifacts.outputs.artifact_paths }}
         if-no-files-found: warn
 
     - name: Upload SARIF (Code Scanning)
