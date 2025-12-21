@@ -5,7 +5,7 @@ Based on [ADR-004 v2](docs/ADR-004-Judge-Metrics.md).
 ## User Review Required
 > [!IMPORTANT]
 > **Exit Code Policy**: We are strictly adhering to "No Exit Code 3". All "unstable" or "disagreement" states will result in `WARN` status (Exit 0) by default, or `FAIL` (Exit 1) under `--strict`.
-> **Cache Invalidation**: This PR changes the cache key structure (adding temp/max_tokens/samples). Old caches will be effectively invalidated/ignored.
+> **Cache Strategy**: implementation uses a **separate** `judge_cache` table. VCR cache is strictly for completion replay. Judge cache is for metric result replay.
 
 ## Proposed Changes
 
@@ -14,41 +14,58 @@ Implement new flags and environment variable precedence.
 
 #### [MODIFY] [main.rs](file:///crates/verdict-cli/src/main.rs)
 - Add `JudgeArgs` flattened struct to `RunArgs` and `CiArgs`.
-- Flags: `--judge`, `--judge-model`, `--judge-samples`, `--judge-refresh`, `--judge-api-key`.
+- Flags:
+    - `--judge` (`none`|`openai`|`fake`)
+    - `--judge-model`
+    - `--judge-samples` (default 3)
+    - `--judge-temperature` (default 0.0)
+    - `--judge-max-tokens` (default 800)
+    - `--judge-refresh`
+    - `--judge-api-key` (advanced/hidden)
 - implement `load_judge_config` with precedence (Flag > Env > Default).
 
 #### [MODIFY] [model.rs](file:///crates/verdict-core/src/model.rs)
-- Update `Expected` enum to support `faithfulness`, `relevance` (or generic mapping).
-- Add `JudgeConfig` to `Settings` (runtime settings).
+- Update `Expected` enum to support `faithfulness`, `relevance`.
+- `Settings`: Add `JudgeConfig` but ONLY for suite-level overrides (rubric, etc). Runtime settings (provider, keys) stay in CLI/Env.
 
 ### 2. Core Engine & Providers
-Implement the "Enrichment Pattern".
+Implement the "Enrichment Pattern" with separate Judge Cache.
+
+#### [NEW] [judge/mod.rs](file:///crates/verdict-core/src/judge/mod.rs)
+- `JudgeService`: Orchestrates calls.
+- `VoteAggregator`: Implements majority vote + agreement calc.
+- `enrich_judge(tc, resp)`: Logic to check trace -> cache -> live.
+
+#### [NEW] [storage/judge_cache.rs](file:///crates/verdict-core/src/storage/judge_cache.rs)
+- Separate SQLite table `judge_cache`.
+- Schema: `key` (PK), `provider`, `model`, `rubric_id`, `rubric_version`, `created_at`, `payload_json`.
+- `get(key)`, `put(key, payload)`.
 
 #### [MODIFY] [runner.rs](file:///crates/verdict-core/src/engine/runner.rs)
 - Inject `JudgeService` into `Runner`.
-- In `run_test`, if judge is enabled and metric requires it:
-    - Call `judge.evaluate(prompt, response, context, criteria)`.
-    - Inject result into `resp.meta.verdict.judge`.
+- **Enrichment Logic**:
+    1.  **Trace Check**: If `resp.meta.verdict.judge.<rubric>` exists, use it (Source: "trace").
+    2.  **Judge Disabled**: If metadata missing AND `--judge none` -> **Exit 2** (Config Error) with actionable hint.
+    3.  **Cache Check**: Generate key (incl. temp/tokens/samples). If hit -> Use it (Source: "cache").
+    4.  **Live Call**: If enabled -> Call provider -> Cache -> Use it (Source: "live").
 
-#### [NEW] [judge.rs](file:///crates/verdict-core/src/providers/judge.rs)
-- `JudgeService` struct.
-- Handling of `openai` provider (using `async-openai` or generic client).
-- Helper for "voting" (k=3 means 3 calls -> majority vote).
+#### [MODIFY] [redaction.rs](file:///crates/verdict-core/src/redaction.rs)
+- Update redaction logic to redact `rationale` fields in judge metadata if `--redact-prompts` is active. (Samples/scores are safe).
 
-### 3. Caching
-#### [MODIFY] [vcr.rs](file:///crates/verdict-core/src/cache/vcr.rs)
-- Update `generate_key` to include:
-    - `provider`, `model`
-    - `rubric_id` (metric type)
-    - `temperature`, `max_tokens`
-    - `samples` (k)
-    - `input_hash`
+### 3. Caching (Key Structure)
+cache key generator in `judge/mod.rs` must include:
+- `provider`, `model`
+- `rubric_id`, `rubric_version`
+- `temperature`, `max_tokens`
+- `samples` (k)
+- `input_hash` (prompt + response + normalized context)
+- `template_hash` (prompt template)
 
 ### 4. Metrics
 #### [MODIFY] [judge.rs](file:///crates/verdict-metrics/src/judge.rs)
-- Implement `FaithfulnessMetric`, `RelevanceMetric` (or generic `LlmJudgeMetric`).
+- Implement `FaithfulnessMetric`, `RelevanceMetric`.
 - Logic: Read from `resp.meta.verdict.judge`.
-- assert `passed` based on `min_score` (was `threshold`).
+- Use `score + epsilon >= min_score` for pass check.
 
 ## Reference: Copy/Paste Ready Text
 
@@ -113,13 +130,14 @@ help = "Max tokens for judge response (affects cache key). Default: 800"
 ## Verification Plan
 
 ### Automated Tests
-- Unit tests for `cache_key` generation (ensure sensitivity).
-- Unit tests for `voting` logic (e.g. 2 True, 1 False -> True).
-- Middleware tests for CLI flag precedence.
+- `judge_cache_key_sensitivity`: Ensure changing `temperature` or `k` changes the key.
+- `voting_logic`: Verify majority vote (e.g. `[true, true, false]` -> `pass`, agreement `0.67`).
 
-### Manual Verification
-- Run `verdict run --judge fake` on `live-test.yaml`.
-- Verify `run.json` contains enriched judge metadata.
+### Failure Mode Verification (Manual/Integration)
+1.  **Trace Offline (Happy)**: Trace contains judge meta → Run with `--judge none` → PASS (Source: "trace").
+2.  **Trace Offline (Missing)**: Trace missing judge meta → Run with `--judge none` → **EXIT 2** (Config Error).
+3.  **Cache Hit**: Run live once. Run again (no refresh) → Source: "cache".
+4.  **Disagreement**: Mock a [true, false, true] response → Status **Warn** (or Fail if `--strict`). Result `pass=1`.
 
 ## Future: PR11 Baseline Reference (Copy/Paste Ready)
 
