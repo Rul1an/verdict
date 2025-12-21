@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-12-21
+
+### Added
+- **Automated Release Workflow**: `v*` tags now trigger builds for Linux (x86_64) and macOS (x86_64, aarch64) with checksums.
+- **verdict-action**:
+  - `baseline` and `export_baseline` inputs for first-class regression gating.
+  - Robust artifact upload logic (no more missing file errors).
+- **Hardened Validation**: `baseline` checks for `schema_version` and `suite` mismatch now exit with code 2 ("Config Error").
+- **UX**: Added warnings for configuration tweaks (fingerprint mismatch) to avoid noisy regressions.
+
 ## [0.2.0] - 2025-12-21
 
 ### Added
