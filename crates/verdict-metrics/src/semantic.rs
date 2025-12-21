@@ -40,12 +40,22 @@ impl Metric for SemanticSimilarityMetric {
         // Convert JSON -> f64 with strict checking
         let va: Vec<f64> = a
             .iter()
-            .map(|x| x.as_f64().ok_or_else(|| anyhow::anyhow!("config error: embedding (response) contains non-numeric value")))
+            .map(|x| {
+                x.as_f64().ok_or_else(|| {
+                    anyhow::anyhow!("config error: embedding (response) contains non-numeric value")
+                })
+            })
             .collect::<Result<Vec<f64>, _>>()?;
 
         let vb: Vec<f64> = b
             .iter()
-            .map(|x| x.as_f64().ok_or_else(|| anyhow::anyhow!("config error: embedding (reference) contains non-numeric value")))
+            .map(|x| {
+                x.as_f64().ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "config error: embedding (reference) contains non-numeric value"
+                    )
+                })
+            })
             .collect::<Result<Vec<f64>, _>>()?;
 
         let score = cosine_similarity_f64(&va, &vb)?;
@@ -74,13 +84,23 @@ impl Metric for SemanticSimilarityMetric {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use verdict_core::model::{TestInput, LlmResponse};
+    use verdict_core::model::{LlmResponse, TestInput};
 
-    fn make_test_case(min_score: f64, response_vec: &[f64], ref_vec: &[f64]) -> (TestCase, Expected, LlmResponse) {
+    fn make_test_case(
+        min_score: f64,
+        response_vec: &[f64],
+        ref_vec: &[f64],
+    ) -> (TestCase, Expected, LlmResponse) {
         let tc = TestCase {
             id: "test".into(),
-            input: TestInput { prompt: "test".into(), context: None },
-            expected: Expected::SemanticSimilarityTo { semantic_similarity_to: "ref".into(), min_score },
+            input: TestInput {
+                prompt: "test".into(),
+                context: None,
+            },
+            expected: Expected::SemanticSimilarityTo {
+                semantic_similarity_to: "ref".into(),
+                min_score,
+            },
             tags: vec![],
             metadata: None,
         };
@@ -144,12 +164,21 @@ mod tests {
         let (tc, expected, resp) = make_test_case(threshold, &v, &v);
         let result = metric.evaluate(&tc, &expected, &resp).await.unwrap();
 
-        assert!(result.passed, "Score 1.0 should pass threshold 1.0 + 0.5*EPSILON due to guard");
+        assert!(
+            result.passed,
+            "Score 1.0 should pass threshold 1.0 + 0.5*EPSILON due to guard"
+        );
 
         // Sanity check: verify it fails if threshold is too high
         // Threshold = 1.0 + 2.0 * EPSILON
         let (tc_fail, expected_fail, resp_fail) = make_test_case(1.0 + (2.0 * EPSILON), &v, &v);
-        let result_fail = metric.evaluate(&tc_fail, &expected_fail, &resp_fail).await.unwrap();
-        assert!(!result_fail.passed, "Score 1.0 should fail threshold 1.0 + 2*EPSILON");
+        let result_fail = metric
+            .evaluate(&tc_fail, &expected_fail, &resp_fail)
+            .await
+            .unwrap();
+        assert!(
+            !result_fail.passed,
+            "Score 1.0 should fail threshold 1.0 + 2*EPSILON"
+        );
     }
 }

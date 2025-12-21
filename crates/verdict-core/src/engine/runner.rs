@@ -300,7 +300,7 @@ impl Runner {
             .await?;
 
         // write into meta.verdict.embeddings
-        if !resp.meta.get("verdict").map_or(false, |v| v.is_object()) {
+        if !resp.meta.get("verdict").is_some_and(|v| v.is_object()) {
             resp.meta["verdict"] = serde_json::json!({});
         }
         resp.meta["verdict"]["embeddings"] = serde_json::json!({

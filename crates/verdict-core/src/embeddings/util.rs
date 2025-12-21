@@ -8,6 +8,7 @@ pub fn encode_vec_f32(v: &[f32]) -> Vec<u8> {
     out
 }
 
+#[allow(clippy::manual_is_multiple_of)]
 pub fn decode_vec_f32(bytes: &[u8]) -> anyhow::Result<Vec<f32>> {
     if bytes.len() % 4 != 0 {
         anyhow::bail!("config error: invalid embedding blob size");

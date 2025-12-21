@@ -336,6 +336,7 @@ fn decide_exit_code(results: &[verdict_core::model::TestResultRow], strict: bool
     exit_codes::OK
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn build_runner(
     db_path: &std::path::Path,
     trace_file: &Option<PathBuf>,

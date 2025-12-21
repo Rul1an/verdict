@@ -39,7 +39,7 @@ fn normalize_paths(cfg: &mut EvalConfig, config_path: &Path) -> anyhow::Result<(
                 if let Some(resolved) = schema_file.as_ref() {
                     if *resolved != before {
                         let meta = tc.metadata.get_or_insert_with(|| serde_json::json!({}));
-                        if !meta.get("verdict").map_or(false, |v| v.is_object()) {
+                        if !meta.get("verdict").is_some_and(|v| v.is_object()) {
                             meta["verdict"] = serde_json::json!({});
                         }
 
