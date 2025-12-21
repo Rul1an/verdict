@@ -42,7 +42,7 @@ impl Baseline {
         Ok(baseline)
     }
 
-    pub fn validate(&self, current_suite: &str) -> Result<()> {
+    pub fn validate(&self, current_suite: &str, current_fingerprint: &str) -> Result<()> {
         if self.suite != current_suite {
             anyhow::bail!(
                 "config error: baseline suite mismatch (expected '{}', found '{}')",
@@ -56,6 +56,13 @@ impl Baseline {
             eprintln!(
                 "warning: baseline generated with verdict v{} (current: v{})",
                 self.verdict_version, current_ver
+            );
+        }
+
+        if self.config_fingerprint != current_fingerprint {
+            eprintln!(
+                "warning: config fingerprint mismatch (baseline config differs from current runtime config).\n\
+                 hint: run with --export-baseline to update the baseline if config changes are intentional."
             );
         }
 

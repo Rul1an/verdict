@@ -104,8 +104,19 @@ async fn cmd_run(args: RunArgs) -> anyhow::Result<i32> {
         args.refresh_embeddings,
         &args.judge,
         &args.baseline,
+        PathBuf::from(&args.config),
     )
-    .await?;
+    .await;
+
+    let runner = match runner {
+        Ok(r) => r,
+        Err(e) => {
+            if e.to_string().contains("config error") {
+                return Ok(exit_codes::CONFIG_ERROR);
+            }
+            return Err(e);
+        }
+    };
 
     let mut artifacts = runner.run_suite(&cfg).await?;
 
@@ -121,7 +132,7 @@ async fn cmd_run(args: RunArgs) -> anyhow::Result<i32> {
 
     // PR11: Export baseline logic
     if let Some(path) = &args.export_baseline {
-        export_baseline(path, &cfg, &artifacts.results)?;
+        export_baseline(path, &PathBuf::from(&args.config), &cfg, &artifacts.results)?;
     }
 
     Ok(decide_exit_code(&artifacts.results, args.strict))
@@ -148,8 +159,19 @@ async fn cmd_ci(args: CiArgs) -> anyhow::Result<i32> {
         args.refresh_embeddings,
         &args.judge,
         &args.baseline,
+        PathBuf::from(&args.config),
     )
-    .await?;
+    .await;
+
+    let runner = match runner {
+        Ok(r) => r,
+        Err(e) => {
+            if e.to_string().contains("config error") {
+                return Ok(exit_codes::CONFIG_ERROR);
+            }
+            return Err(e);
+        }
+    };
 
     let mut artifacts = runner.run_suite(&cfg).await?;
 
@@ -172,7 +194,7 @@ async fn cmd_ci(args: CiArgs) -> anyhow::Result<i32> {
 
     // PR11: Export baseline logic
     if let Some(path) = &args.export_baseline {
-        export_baseline(path, &cfg, &artifacts.results)?;
+        export_baseline(path, &PathBuf::from(&args.config), &cfg, &artifacts.results)?;
     }
 
     Ok(decide_exit_code(&artifacts.results, args.strict))
@@ -241,6 +263,7 @@ async fn build_runner(
     refresh_embeddings: bool,
     judge_args: &JudgeArgs,
     baseline_arg: &Option<PathBuf>,
+    cfg_path: PathBuf,
 ) -> anyhow::Result<verdict_core::engine::runner::Runner> {
     let store = verdict_core::storage::Store::open(db_path)?;
     store.init_schema()?;
@@ -363,24 +386,10 @@ async fn build_runner(
     // Load baseline if provided
     let baseline = if let Some(path) = baseline_arg {
         let b = verdict_core::baseline::Baseline::load(path)?;
-        if let Err(e) = b.validate(&cfg.suite) {
-            // We want specific exit code 2 for this config error
+        let fp = verdict_core::baseline::compute_config_fingerprint(&cfg_path);
+        if let Err(e) = b.validate(&cfg.suite, &fp) {
             eprintln!("fatal: {}", e);
             return Err(anyhow::anyhow!("config error").context(e));
-            // Wait, 'build_runner' returns Result<Runner>. It's hard to return exit code here directly.
-            // But if we return Err with specific text, callers might not check it reliably for exit code.
-            // However, `cmd_run` and `cmd_ci` CAN handle it if we check strictly.
-            // Actually, `Baseline::load` also returns `Result`.
-            // If we bubble up error, default main.rs prints it and exits 1.
-            // To enforce exit 2, we should probably do this check inside `cmd_run` BEFORE `build_runner` or wrap `build_runner`.
-            // But `build_runner` constructs everything.
-            // Let's rely on standard error handling BUT the caller `cmd_run` can catch it.
-            // Better: `validate` is simple. Let's move the `validate` call to `cmd_run`/`cmd_ci` to control exit code?
-            // Or just make `build_runner` take a closure? No.
-            // This is good enough for now, main.rs exits 1.
-            // USER REQUEST specifically asked for "Exit 2 (config error)".
-            // So I MUST ensure it results in Exit 2.
-            // I'll bubble it up, but in `cmd_run`, I will check if the error message contains "config error" (which `bail!` does).
         }
         Some(b)
     } else {
@@ -409,6 +418,7 @@ fn ensure_parent_dir(path: &std::path::Path) -> anyhow::Result<()> {
 
 fn export_baseline(
     path: &PathBuf,
+    config_path: &PathBuf,
     cfg: &verdict_core::model::EvalConfig,
     results: &[verdict_core::model::TestResultRow],
 ) -> anyhow::Result<()> {
@@ -443,9 +453,7 @@ fn export_baseline(
         suite: cfg.suite.clone(),
         verdict_version: env!("CARGO_PKG_VERSION").to_string(),
         created_at: chrono::Utc::now().to_rfc3339(),
-        config_fingerprint: verdict_core::baseline::compute_config_fingerprint(
-            PathBuf::from("config_path_placeholder").as_path(),
-        ),
+        config_fingerprint: verdict_core::baseline::compute_config_fingerprint(config_path),
         entries,
     };
 
