@@ -7,5 +7,5 @@ tests:
       prompt: "Hello"
     expected:
       type: semantic_similarity_to
-      text: "Hi there"
+      text: "hello from dummy :: Hello"
       threshold: 0.8

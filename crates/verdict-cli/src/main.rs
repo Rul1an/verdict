@@ -248,6 +248,7 @@ async fn cmd_run(args: RunArgs) -> anyhow::Result<i32> {
 
     let artifacts = runner.run_suite(&cfg).await?;
 
+    verdict_core::report::json::write_json(&artifacts, &PathBuf::from("run.json"))?;
     verdict_core::report::console::print_summary(&artifacts.results);
     Ok(decide_exit_code(&artifacts.results, args.strict))
 }
