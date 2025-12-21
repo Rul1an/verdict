@@ -1,0 +1,41 @@
+name: Bug Report
+description: Create a report to help us improve Verdict
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: "When I run verdict ci with --trace-file, it panics..."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior.
+      placeholder: |
+        1. Run 'verdict ci ...'
+        2. See error
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Verdict Version
+      description: Output of `verdict --version`
+      placeholder: "v0.2.0"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs / Output
+      description: Please copy and paste any relevant log output.
+      render: shell
