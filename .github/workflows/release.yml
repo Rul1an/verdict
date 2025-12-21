@@ -1,0 +1,101 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            suffix: linux-x86_64
+            use_cross: true # Use cross for musl to ensure portability
+
+          - os: macos-13
+            target: x86_64-apple-darwin
+            suffix: macos-x86_64
+            use_cross: false
+
+          - os: macos-14
+            target: aarch64-apple-darwin
+            suffix: macos-aarch64
+            use_cross: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Cross
+        if: ${{ matrix.use_cross }}
+        run: cargo install cross
+
+      - name: Build Binary
+        shell: bash
+        run: |
+          if [ "${{ matrix.use_cross }}" == "true" ]; then
+            cross build -p verdict-cli --release --target ${{ matrix.target }}
+          else
+            cargo build -p verdict-cli --release --target ${{ matrix.target }}
+          fi
+
+      - name: Package Asset
+        shell: bash
+        run: |
+          # Create strict staging dir
+          staging="verdict-${{ matrix.suffix }}"
+          mkdir -p "$staging"
+
+          # Copy binary to root of staging
+          cp "target/${{ matrix.target }}/release/verdict" "$staging/"
+
+          # Create tarball
+          tar -czf "$staging.tar.gz" -C "$staging" verdict
+
+          echo "ASSET=$staging.tar.gz" >> "$GITHUB_ENV"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: verdict-${{ matrix.suffix }}
+          path: ${{ env.ASSET }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Generate Checksums
+        run: |
+          cd artifacts
+          sha256sum *.tar.gz > checksums.txt
+          cat checksums.txt
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/*.tar.gz
+            artifacts/checksums.txt
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref, '-') }} # v0.2.1-rc1 -> prerelease
