@@ -1,0 +1,236 @@
+name: "Verdict PR Gate"
+description: "CI-first regression gate for RAG pipelines (Replay/Trace capable). Runs verdict ci and publishes JUnit + SARIF."
+author: "Verdict"
+
+branding:
+  icon: "check-circle"
+  color: "purple"
+
+inputs:
+  repo:
+    description: "GitHub repo that hosts Verdict releases (owner/name)."
+    required: false
+    default: "Rul1an/verdict"
+
+  verdict_version:
+    description: "Release tag to download (e.g. v0.6.0). Use a pinned tag for reproducibility."
+    required: true
+
+  asset_name:
+    description: "Optional override for the release asset filename. If empty, computed from OS/arch."
+    required: false
+    default: ""
+
+  config:
+    description: "Path to eval YAML config."
+    required: false
+    default: "ci-eval.yaml"
+
+  trace_file:
+    description: "Optional JSONL trace file for replay mode."
+    required: false
+    default: ""
+
+  db:
+    description: "SQLite db path."
+    required: false
+    default: ".eval/eval.db"
+
+  quarantine_mode:
+    description: "Quarantine mode: off|warn|strict"
+    required: false
+    default: "warn"
+
+  rerun_failures:
+    description: "Rerun failures N times (ignored/forced to 0 in replay mode)."
+    required: false
+    default: "1"
+
+  strict:
+    description: "If true, Warn/Flaky become blocking (exit 1)."
+    required: false
+    default: "false"
+
+  redact_prompts:
+    description: "If true, redact prompts in outputs/OTel."
+    required: false
+    default: "true"
+
+  junit:
+    description: "JUnit output path."
+    required: false
+    default: "junit.xml"
+
+  sarif:
+    description: "SARIF output path."
+    required: false
+    default: "sarif.json"
+
+  otel_jsonl:
+    description: "Optional OTel JSONL output path."
+    required: false
+    default: ""
+
+  upload_artifacts:
+    description: "Upload junit/sarif/run.json/otel.jsonl as workflow artifacts."
+    required: false
+    default: "true"
+
+  artifact_name:
+    description: "Artifact name if upload_artifacts is true."
+    required: false
+    default: "verdict-reports"
+
+  upload_sarif:
+    description: "Upload SARIF to GitHub Code Scanning."
+    required: false
+    default: "true"
+
+  working_directory:
+    description: "Optional working directory to run verdict in."
+    required: false
+    default: "."
+
+outputs:
+  junit_path:
+    description: "JUnit report path"
+    value: ${{ steps.out.outputs.junit_path }}
+  sarif_path:
+    description: "SARIF report path"
+    value: ${{ steps.out.outputs.sarif_path }}
+  run_json_path:
+    description: "Run artifact path"
+    value: ${{ steps.out.outputs.run_json_path }}
+  otel_jsonl_path:
+    description: "OTel JSONL path"
+    value: ${{ steps.out.outputs.otel_jsonl_path }}
+  verdict_version:
+    description: "Installed verdict version"
+    value: ${{ steps.install.outputs.verdict_version }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Verdict binary
+      id: install
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        REPO="${{ inputs.repo }}"
+        TAG="${{ inputs.verdict_version }}"
+        ASSET="${{ inputs.asset_name }}"
+
+        os="$(uname -s)"
+        arch="$(uname -m)"
+
+        case "$os" in
+          Linux)  os_id="linux" ;;
+          Darwin) os_id="macos" ;;
+          *) echo "Unsupported OS: $os" >&2; exit 2 ;;
+        esac
+
+        case "$arch" in
+          x86_64|amd64) arch_id="x86_64" ;;
+          aarch64|arm64) arch_id="aarch64" ;;
+          *) echo "Unsupported arch: $arch" >&2; exit 2 ;;
+        esac
+
+        if [ -z "$ASSET" ]; then
+          # Align this with your release artifact naming from cargo-dist.
+          # Example expected asset: verdict-${os_id}-${arch_id}.tar.gz
+          ASSET="verdict-${os_id}-${arch_id}.tar.gz"
+        fi
+
+        url="https://github.com/${REPO}/releases/download/${TAG}/${ASSET}"
+        echo "Downloading Verdict: $url"
+
+        tmp="${RUNNER_TEMP}/verdict"
+        mkdir -p "$tmp"
+        curl -fsSL "$url" -o "$tmp/verdict.tgz"
+
+        tar -xzf "$tmp/verdict.tgz" -C "$tmp"
+
+        # Binary check (Hardening)
+        if [ ! -f "$tmp/verdict" ]; then
+          echo "Error: Release asset did not contain expected binary '$tmp/verdict'." >&2
+          ls -la "$tmp" >&2 || true
+          exit 2
+        fi
+
+        chmod +x "$tmp/verdict"
+
+        echo "$tmp" >> "$GITHUB_PATH"
+
+        echo "Installed:"
+        "$tmp/verdict" version || true
+
+        # Expose installed version (best-effort)
+        v="$("$tmp/verdict" version 2>/dev/null || echo "$TAG")"
+        echo "verdict_version=$v" >> "$GITHUB_OUTPUT"
+
+    - name: Run Verdict CI
+      id: run
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      run: |
+        set -euo pipefail
+
+        cmd=(verdict ci
+          --config "${{ inputs.config }}"
+          --db "${{ inputs.db }}"
+          --junit "${{ inputs.junit }}"
+          --sarif "${{ inputs.sarif }}"
+          --quarantine-mode "${{ inputs.quarantine_mode }}"
+          --rerun-failures "${{ inputs.rerun_failures }}"
+        )
+
+        if [ -n "${{ inputs.trace_file }}" ]; then
+          cmd+=(--trace-file "${{ inputs.trace_file }}")
+        fi
+
+        if [ -n "${{ inputs.otel_jsonl }}" ]; then
+          cmd+=(--otel-jsonl "${{ inputs.otel_jsonl }}")
+        fi
+
+        if [ "${{ inputs.redact_prompts }}" = "true" ]; then
+          cmd+=(--redact-prompts)
+        fi
+
+        if [ "${{ inputs.strict }}" = "true" ]; then
+          cmd+=(--strict)
+        fi
+
+        echo "Running: ${cmd[*]}"
+        "${cmd[@]}"
+
+    - name: Upload Artifacts
+      if: ${{ inputs.upload_artifacts == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact_name }}
+        if-no-files-found: warn
+        path: |
+          ${{ inputs.junit }}
+          ${{ inputs.sarif }}
+          run.json
+          ${{ inputs.otel_jsonl }}
+
+    - name: Upload SARIF (Code Scanning)
+      if: >-
+        ${{ inputs.upload_sarif == 'true'
+            && (github.event_name != 'pull_request'
+                || github.event.pull_request.head.repo.fork == false) }}
+      uses: github/codeql-action/upload-sarif@v4
+      continue-on-error: true
+      with:
+        sarif_file: ${{ inputs.sarif }}
+
+    - name: Set outputs
+      id: out
+      shell: bash
+      run: |
+        echo "junit_path=${{ inputs.junit }}" >> "$GITHUB_OUTPUT"
+        echo "sarif_path=${{ inputs.sarif }}" >> "$GITHUB_OUTPUT"
+        echo "run_json_path=run.json" >> "$GITHUB_OUTPUT"
+        echo "otel_jsonl_path=${{ inputs.otel_jsonl }}" >> "$GITHUB_OUTPUT"
