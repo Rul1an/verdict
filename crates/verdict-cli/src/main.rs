@@ -116,6 +116,8 @@ enum QuarantineSub {
     List,
 }
 
+mod templates;
+
 mod exit_codes {
     pub const OK: i32 = 0;
     pub const TEST_FAILED: i32 = 1;
@@ -150,104 +152,57 @@ async fn dispatch(cli: Cli) -> anyhow::Result<i32> {
 
 async fn cmd_init(args: InitArgs) -> anyhow::Result<i32> {
     // 1. Basic Config
-    if !args.config.exists() {
-        if let Some(parent) = args.config.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        verdict_core::config::write_sample_config(&args.config)?;
-        eprintln!("created {}", args.config.display());
-    } else {
-        eprintln!("note: {} already exists", args.config.display());
-    }
+    write_sample_config_if_missing(&args.config)?;
 
     // 2. Gitignore
     if args.gitignore {
-        let gi_path = std::path::Path::new(".gitignore");
-        if !gi_path.exists() {
-            std::fs::write(gi_path, "/.eval/\n/out/\n*.db\n*.db-shm\n*.db-wal\n/verdict\n")?;
-            eprintln!("created .gitignore");
-        } else {
-            eprintln!("note: .gitignore already exists (skipped)");
-        }
+        write_file_if_missing(std::path::Path::new(".gitignore"), templates::GITIGNORE)?;
     }
 
     // 3. CI Scaffolding
     if args.ci {
-        // ci-eval.yaml
-        let ci_yaml = std::path::Path::new("ci-eval.yaml");
-        if !ci_yaml.exists() {
-             std::fs::write(ci_yaml, r#"version: 1
-suite: "ci_smoke"
-model: "trace"
-tests:
-  - id: "ci_smoke_regex"
-    input:
-      prompt: "ci_regex"
-    expected:
-      type: regex_match
-      pattern: "Hello\\s+CI"
-      flags: ["i"]
-  - id: "ci_smoke_schema"
-    input:
-      prompt: "ci_schema"
-    expected:
-      type: json_schema
-      json_schema: "{}"
-      schema_file: "schemas/ci_answer.schema.json"
-"#)?;
-             eprintln!("created ci-eval.yaml");
-        }
-
-        // schemas/ci_answer.schema.json
-        ensure_parent_dir(&std::path::Path::new("schemas/x"))?;
-        let schema_path = std::path::Path::new("schemas/ci_answer.schema.json");
-        if !schema_path.exists() {
-            std::fs::write(schema_path, r#"{
-  "type": "object",
-  "required": ["answer"],
-  "properties": {
-    "answer": { "type": "string" }
-  },
-  "additionalProperties": false
-}"#)?;
-            eprintln!("created schemas/ci_answer.schema.json");
-        }
-
-        // traces/ci.jsonl
-        ensure_parent_dir(&std::path::Path::new("traces/x"))?;
-        let trace_path = std::path::Path::new("traces/ci.jsonl");
-        if !trace_path.exists() {
-            std::fs::write(trace_path, r#"{"schema_version": 1, "type": "verdict.trace", "request_id": "ci_1", "prompt": "ci_regex", "response": "hello   ci", "model": "trace", "provider": "trace"}
-{"schema_version": 1, "type": "verdict.trace", "request_id": "ci_2", "prompt": "ci_schema", "response": "{\"answer\":\"ok\"}", "model": "trace", "provider": "trace"}
-"#)?;
-            eprintln!("created traces/ci.jsonl");
-        }
-
-        // .github/workflows/verdict.yml
-        ensure_parent_dir(&std::path::Path::new(".github/workflows/x"))?;
-        let workflow_path = std::path::Path::new(".github/workflows/verdict.yml");
-        if !workflow_path.exists() {
-            std::fs::write(workflow_path, r#"name: Verdict Gate
-on: [push, pull_request]
-jobs:
-  verdict:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      # Note: In real usage, you would install verdict binary or use a container.
-      # This example assumes verdict is available or you build it.
-      - name: Run Verdict Smoke Test
-        run: |
-          # Example: download release or build
-          # cargo install --git https://github.com/Rul1an/verdict.git verdict-cli
-          # verdict ci --config ci-eval.yaml --trace-file traces/ci.jsonl --strict
-          echo "Customize this workflow to install verdict!"
-"#)?;
-             eprintln!("created .github/workflows/verdict.yml (skeleton)");
-        }
+        write_file_if_missing(std::path::Path::new("ci-eval.yaml"), templates::CI_EVAL_YAML)?;
+        write_file_if_missing(
+            std::path::Path::new("schemas/ci_answer.schema.json"),
+            templates::CI_SCHEMA_JSON,
+        )?;
+        write_file_if_missing(
+            std::path::Path::new("traces/ci.jsonl"),
+            templates::CI_TRACES_JSONL,
+        )?;
+        write_file_if_missing(
+            std::path::Path::new(".github/workflows/verdict.yml"),
+            templates::CI_WORKFLOW_YML,
+        )?;
     }
 
     Ok(exit_codes::OK)
+}
+
+fn write_file_if_missing(path: &std::path::Path, content: &str) -> anyhow::Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    if !path.exists() {
+        std::fs::write(path, content)?;
+        eprintln!("created {}", path.display());
+    } else {
+        eprintln!("note: {} already exists (skipped)", path.display());
+    }
+    Ok(())
+}
+
+fn write_sample_config_if_missing(path: &std::path::Path) -> anyhow::Result<()> {
+    if !path.exists() {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        verdict_core::config::write_sample_config(path)?;
+        eprintln!("created {}", path.display());
+    } else {
+        eprintln!("note: {} already exists", path.display());
+    }
+    Ok(())
 }
 
 async fn cmd_run(args: RunArgs) -> anyhow::Result<i32> {
@@ -320,36 +275,24 @@ async fn cmd_quarantine(args: QuarantineArgs) -> anyhow::Result<i32> {
 
 fn decide_exit_code(results: &[verdict_core::model::TestResultRow], strict: bool) -> i32 {
     use verdict_core::model::TestStatus;
-    let mut has_fail = false;
-    let mut has_error = false;
-    let mut has_warn = false;
-    let mut has_flaky = false;
-    let mut has_config_error = false;
 
-    for r in results {
-        match r.status {
-            TestStatus::Pass => {}
-            TestStatus::Warn => has_warn = true,
-            TestStatus::Flaky => has_flaky = true,
-            TestStatus::Fail => has_fail = true,
-            TestStatus::Error => {
-                 if r.message.starts_with("config error:") {
-                     has_config_error = true;
-                 }
-                 has_error = true;
-            },
-        }
-    }
-
-    if has_config_error {
+    if results.iter().any(|r| r.message.starts_with("config error:")) {
         return exit_codes::CONFIG_ERROR;
     }
 
-    if has_error || has_fail {
+    let has_fatal = results
+        .iter()
+        .any(|r| matches!(r.status, TestStatus::Fail | TestStatus::Error));
+
+    if has_fatal {
         return exit_codes::TEST_FAILED;
     }
 
-    if strict && (has_warn || has_flaky) {
+    if strict
+        && results
+            .iter()
+            .any(|r| matches!(r.status, TestStatus::Warn | TestStatus::Flaky))
+    {
         return exit_codes::TEST_FAILED;
     }
 

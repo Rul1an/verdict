@@ -38,16 +38,8 @@ fn normalize_paths(cfg: &mut EvalConfig, config_path: &Path) -> anyhow::Result<(
 
                 if let Some(resolved) = schema_file.as_ref() {
                     if *resolved != before {
-                        if tc.metadata.is_none() {
-                            tc.metadata = Some(serde_json::json!({}));
-                        }
-
-                        let meta = tc.metadata.as_mut().unwrap();
-                        if !meta
-                            .get("verdict")
-                            .map(|v| v.is_object())
-                            .unwrap_or(false)
-                        {
+                        let meta = tc.metadata.get_or_insert_with(|| serde_json::json!({}));
+                        if !meta.get("verdict").map_or(false, |v| v.is_object()) {
                             meta["verdict"] = serde_json::json!({});
                         }
 
@@ -58,7 +50,6 @@ fn normalize_paths(cfg: &mut EvalConfig, config_path: &Path) -> anyhow::Result<(
                                 .parent()
                                 .unwrap_or(Path::new("."))
                                 .to_string_lossy()
-                                .to_string()
                         );
                     }
                 }
