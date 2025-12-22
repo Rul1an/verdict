@@ -1,30 +1,31 @@
-# Verdict ⚖️
+# Verdict
 
-**Determinism at the speed of Rust.**
-Local-first evaluation, regression gating, and active monitoring for AI Agents & RAG.
+**Deterministic evaluation and regression gating for LLM applications.**
 
 [![CI](https://github.com/Rul1an/verdict/actions/workflows/verdict-ci.yml/badge.svg)](https://github.com/Rul1an/verdict/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Why Verdict?
+## Overview
 
-*   **⚡ Blazing Fast**: Native Rust binary (`verdict`). No Python runtime overhead for evaluation logic.
-*   **🛡️ CI-Native**: strict regression gating with **deterministic replay**. Zero network calls in CI.
-*   **🖥️ SOTA TUI**: High-fidelity terminal UI for real-time agent observation and attack simulation.
-*   **🔍 OTel-Ready**: Seamlessly ingest OpenTelemetry spans from any language.
+Verdict is a local-first tool for evaluating AI agents and RAG pipelines. It provides strict regression gating in CI without requiring network access, ensuring deterministic repeatable builds.
+
+*   **Performance**: Native Rust binary. No Python runtime overhead for the evaluation engine.
+*   **CI Native**: Deterministic replay mode prevents flaky tests and enables offline regression gating.
+*   **Observability**: OpenTelemetry ingestion and a real-time Terminal UI (TUI) for debugging.
+*   **Architecture**: Typesafe SQLite storage for all traces and results.
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Install
+Build the CLI from source:
 ```bash
-# Build from source (Recommended for v0.4.0)
 cargo install --path crates/verdict-cli
 ```
 
 ### 2. Run a Regression Gate
-Compare a new trace against a known-good baseline with **zero flakiness**.
+Compare a candidate trace against a baseline:
 ```bash
 verdict ci \
   --config examples/ci-regression-gate/eval.yaml \
@@ -33,8 +34,8 @@ verdict ci \
   --strict
 ```
 
-### 3. Experience the SOTA TUI
-Run our flagship Agent Demo (`examples/agent-demo-2`) to see the TUI in action:
+### 3. Interactive TUI
+Run the reference agent implementation:
 ```bash
 cd examples/agent-demo-2
 uv pip install -r requirements.txt
@@ -43,24 +44,22 @@ python demo_tui.py
 
 ---
 
-## 📂 Repository Structure
+## Repository Structure
 
-The repository is organized for clarity and separation of concerns:
-
-*   **[`crates/`](./crates)**: The Rust Core.
-    *   `verdict-core`: Business logic, SQLite storage, OTel ingestion.
-    *   `verdict-cli`: The binary entrypoint.
-    *   `verdict-metrics`: Shared metric definitions (Semantic, Regex, JSON Schema).
-*   **[`examples/`](./examples)**: **Start Here.** Self-contained reference implementations.
-    *   **[`agent-demo-2/`](./examples/agent-demo-2)**: 🌟 **SOTA Agent Demo**. Rich TUI, attack sim, live dashboard.
-    *   **[`ci-regression-gate/`](./examples/ci-regression-gate)**: 🤖 **CI/CD Blueprints**. GitHub Actions workflows.
-    *   `rag-grounding/`, `negation-safety/`: Focused metric examples.
+*   **`crates/`**: Core Rust implementation.
+    *   `verdict-core`: Evaluation engine, storage, and OTel ingestion.
+    *   `verdict-cli`: CLI entrypoint.
+    *   `verdict-metrics`: Shared metric definitions.
+*   **`examples/`**: Reference implementations.
+    *   `agent-demo-2/`: Interactive agent with TUI and attack simulation.
+    *   `ci-regression-gate/`: Complete CI/CD workflow examples.
+    *   `rag-grounding/`, `negation-safety/`: Metric configuration examples.
 
 ---
 
-## 🛠️ GitHub Actions Integration
+## CI Integration
 
-Use **Verdict** directly in your CI pipelines to block regressions before they merge.
+Verdict is designed to run in standard CI pipelines.
 
 ```yaml
 # .github/workflows/ci.yml
@@ -77,18 +76,17 @@ jobs:
         run: |
           $VERDICT_BIN ci --config eval.yaml --trace-file traces/pr.jsonl --baseline baseline.json --strict
 ```
-*(See [`examples/ci-regression-gate`](./examples/ci-regression-gate) for the full production setup)*
 
 ---
 
-## 📐 Philosophy (The "Senior Dev" Way)
+## Design Principles
 
-1.  **Strictness over flakiness**: If a test isn't deterministic, it's a bug in the test, not the code.
-2.  **Local-first**: Debug on your laptop with the exact same binary running in CI.
-3.  **No fluff**: Minimal configuration, maximum type safety (Rust).
+1.  **Strict Determinism**: Tests must be repeatable. Flakiness is a failure.
+2.  **Local-First, CI-Compatible**: The same binary runs locally and in CI.
+3.  **Type Safety**: Configuration and metrics are strictly validated.
 
-## 🤝 Contributing
-We enforce **strict** code quality.
+## Contributing
+
 ```bash
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
