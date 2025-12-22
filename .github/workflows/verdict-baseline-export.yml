@@ -14,18 +14,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Build Verdict (Current Commit)
+        run: cargo build --release
+
       - name: Export baseline (offline/replay)
-        uses: Rul1an/verdict-action@v1
+        env:
+          VERDICT_BIN: ${{ github.workspace }}/target/release/verdict
+        working-directory: examples/ci-regression-gate
+        run: |
+          $VERDICT_BIN ci \
+            --config eval.yaml \
+            --trace-file traces/main.jsonl \
+            --export-baseline baseline.json
+
+      - name: Upload Baseline Artifact
+        uses: actions/upload-artifact@v4
         with:
-          verdict_version: v0.4.0
-          workdir: examples/ci-regression-gate
-          config: eval.yaml
-          trace_file: traces/main.jsonl
-          export_baseline: baseline.json
-          sarif: false
-          cache_mode: auto
-          upload_artifacts: false
-          upload_baseline_artifact: true
+          name: baseline
+          path: examples/ci-regression-gate/baseline.json
 
       - name: Show baseline
         run: |
