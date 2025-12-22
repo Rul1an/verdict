@@ -1,6 +1,6 @@
 version: 1
 suite: "rag_grounding_demo"
-model: "trace"
+model: "demo-3d"
 
 tests:
   - id: "rag_grounding_must_contain"

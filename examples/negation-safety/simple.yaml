@@ -1,6 +1,6 @@
 version: 1
 suite: "negation_safety_demo"
-model: "trace"
+model: "demo-3d"
 
 tests:
   - id: "bleach_ammonia_semantic"

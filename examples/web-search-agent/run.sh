@@ -7,7 +7,7 @@ mkdir -p .eval
 
 # Locate binary (assuming we are in examples/agent-function-calling/)
 # ../../target/debug/verdict relative to this script
-VERDICT_BIN="../../target/debug/verdict"
+VERDICT_BIN="../../target/release/verdict"
 
 if [ ! -f "$VERDICT_BIN" ]; then
     echo "Error: Binary not found at $VERDICT_BIN (PWD: $(pwd))"
