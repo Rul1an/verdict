@@ -1,38 +1,32 @@
 # Contributing to Verdict
 
-Thank you for your interest in contributing to Verdict! We welcome contributions from the community.
+We enforce strict code quality standards to ensure reliability in CI environments.
 
-## Local Development
+## Development
 
-### Prerequisites
-- Rust (latest stable)
-- Cargo
-
-### Setup
-1. Clone the repository everywhere
-   ```bash
-   git clone https://github.com/Rul1an/verdict.git
-   cd verdict
-   ```
-2. Build
-   ```bash
-   cargo build
-   ```
-3. Test
-   ```bash
-   cargo test
-   ```
-
-### Running Demos
-See `examples/README.md` for instructions on running the demo suites.
+1.  **Rust Toolchain**: Use the latest stable release.
+2.  **Formatting**: `cargo fmt` must pass.
+3.  **Linting**: Zero tolerance for warnings.
+    ```bash
+    cargo clippy --workspace --all-targets -- -D warnings
+    ```
+4.  **Testing**: All tests must pass, including integration tests.
+    ```bash
+    cargo test --workspace
+    ```
 
 ## Pull Requests
 
-1. Fork the repo and create your branch from `main`.
-2. Ensure `cargo fmt` and `cargo clippy` are clean.
-3. Verify with `cargo test`.
-4. Open a PR using the template provided.
+*   **Atomic Commits**: Keep changes focused.
+*   **Conventional Commits**: Use conventional commit messages (e.g., `feat:`, `fix:`, `chore:`).
+*   **Regression Check**: Run the CI gate locally before pushing.
+    ```bash
+    # Example
+    cargo run --release -- ci --config examples/ci-regression-gate/eval.yaml ...
+    ```
 
-## Release Process
-(Maintainers only)
-- Releases are triggered by pushing `v*` tags.
+## Architecture
+
+*   **Core**: Business logic goes in `crates/verdict-core`.
+*   **CLI**: Interface logic goes in `crates/verdict-cli`.
+*   **No Flakiness**: Any test that relies on network or external state must utilize the `replay` mechanism or be mocked.
