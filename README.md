@@ -2,7 +2,7 @@
 
 **Deterministic evaluation and regression gating for LLM applications.**
 
-[![CI](https://github.com/Rul1an/verdict/actions/workflows/verdict-ci.yml/badge.svg)](https://github.com/Rul1an/verdict/actions)
+[![CI](https://github.com/Rul1an/verdict/actions/workflows/verdict.yml/badge.svg)](https://github.com/Rul1an/verdict/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Overview
