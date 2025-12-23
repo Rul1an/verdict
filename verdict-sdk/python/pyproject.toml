@@ -21,6 +21,7 @@ dev = [
   "isort",
   "mypy",
 ]
+openai = ["openai>=1.0.0"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["verdict_sdk"]

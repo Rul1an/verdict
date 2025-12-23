@@ -22,6 +22,7 @@ python3 verdict-sdk/python/examples/openai_record.py
 
 echo "Trace Content (grep result):"
 grep '"result":' "$TRACE_FILE" || { echo "❌ Failed: No tool result recorded"; exit 1; }
+grep '"tool_call_id":' "$TRACE_FILE" || { echo "❌ Failed: No tool_call_id recorded in meta"; exit 1; }
 
 # 2. Run Verdict CI (Replay Strict)
 # Note: config expects "openai_weather_demo", but loop uses "openai_loop_demo".

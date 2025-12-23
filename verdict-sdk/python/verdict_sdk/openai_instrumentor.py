@@ -67,7 +67,6 @@ def record_chat_completions(
         clock=clock or SystemClock()
     ) as ep:
 
-        # Polish 1: Removed redundant try/except re-raise
         kwargs = {
             "model": model,
             "messages": messages,
@@ -120,7 +119,8 @@ def record_chat_completions(
                     result=None,
                     error=None,
                     step_id=sid,
-                    call_index=i
+                    call_index=i,
+                    tool_call_id=tc_id # Prio 0: Pass ID
                 )
 
                 tool_calls_out.append({
@@ -185,8 +185,6 @@ def record_chat_completions_with_tools(
         tool_calls_summary = []
         content = ""
 
-        # Polish 1: Removed redundant try/except re-raise
-        # We allow up to max_tool_rounds tool executions, plus one final response
         for round_idx in range(max_tool_rounds + 1):
             kwargs = {
                 "model": model,
@@ -272,6 +270,7 @@ def record_chat_completions_with_tools(
                         args=args_obj,
                         result=result_obj,
                         error=error_msg,
+                        tool_call_id=tc_id, # Prio 0: Pass ID
                         meta=tool_call_res_meta
                     )
 
@@ -282,10 +281,9 @@ def record_chat_completions_with_tools(
                         "error": error_msg
                     })
 
-                    # Polish 3: ensure_ascii=False
-                    tool_content = json.dumps(result_obj, ensure_ascii=False) if result_obj is not None else (error_msg or "")
+                    # Prio 1: sort_keys=True
+                    tool_content = json.dumps(result_obj, ensure_ascii=False, sort_keys=True) if result_obj is not None else (error_msg or "")
 
-                    # Polish 2: No 'name' field
                     current_messages.append({
                         "role": "tool",
                         "tool_call_id": tc_id,

@@ -64,9 +64,14 @@ class EpisodeRecorder:
         args: Any,
         result: Any | None,
         error: str | None = None,
+        tool_call_id: Optional[str] = None, # Prio 0: Add explicit ID support
         meta: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Writes a V2 tool_call event with executed result"""
+        m = meta or {}
+        if tool_call_id:
+            m["tool_call_id"] = tool_call_id
+
         self.writer.write_event({
             "type": "tool_call",
             "episode_id": self.episode_id,
@@ -77,7 +82,7 @@ class EpisodeRecorder:
             "args": args,
             "result": result,
             "error": error,
-            "meta": meta or {},
+            "meta": m,
         })
 
     def tool_call(
@@ -89,11 +94,16 @@ class EpisodeRecorder:
         error: Optional[str] = None,
         step_id: Optional[str] = None,
         call_index: int = 0,
+        tool_call_id: Optional[str] = None, # Prio 0: Add explicit ID support
         meta: Optional[Dict[str, Any]] = None,
     ) -> None:
         # If no explicit step_id is provided, create an implicit "model" step to attach to
         # (Though usually tool_calls follow a model/thinking step)
         sid = step_id or self.step(kind="model", name="agent", content="")
+
+        m = meta or {}
+        if tool_call_id:
+            m["tool_call_id"] = tool_call_id
 
         self.writer.write_event({
             "type": "tool_call",
@@ -105,16 +115,10 @@ class EpisodeRecorder:
             "args": args,
             "result": result,
             "error": error,
-            "meta": meta or {},
+            "meta": m,
         })
         # Note: tool_call does not increment _idx itself, it's an attachment to a step logic
-        # (Though in V2 specs typically they are events. Let's trust the user spec: tool_call is an event)
-        # Wait, usually V2 JSONL flat events DO have order.
-        # The user's spec didn't increment _idx in tool_call.
-        # But if it's a flat list, we probably should if we rely on idx for sorting.
-        # However, following "No AI-isms", I will stick EXACTLY to the user provided code.
-        # User code: didn't increment _idx in tool_call.
-        pass
+        return
 
     def end(self, *, outcome: str = "pass", meta: Optional[Dict[str, Any]] = None) -> None:
         if self._ended:
