@@ -297,7 +297,7 @@ impl Runner {
         let expected_json = serde_json::to_string(&tc.expected).unwrap_or_default();
         let metric_versions = [
             ("verdict", env!("CARGO_PKG_VERSION")),
-            // TODO: Add metric-specific versions if available
+            // Add metric-specific versions if available
         ];
 
         let fp = crate::fingerprint::compute(

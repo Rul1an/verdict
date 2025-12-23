@@ -10,7 +10,7 @@ fn test_mcp_correlation_and_prompt() {
 "#;
 
     let events = parse_mcp_transcript(input, McpInputFormat::JsonRpc).unwrap();
-    let trace = mcp_events_to_v2_trace(events, "test_ep".into(), Some("test_prompt".into()));
+    let trace = mcp_events_to_v2_trace(events, "test_ep".into(), None, Some("test_prompt".into()));
 
     // Check EpisodeStart (P0.1)
     if let TraceEvent::EpisodeStart(start) = &trace[0] {
@@ -49,7 +49,7 @@ fn test_determinism_line_fallback() {
     assert_eq!(events[1].source_line, 3);
     assert_eq!(events[2].source_line, 4);
 
-    let trace = mcp_events_to_v2_trace(events, "order_test".into(), None);
+    let trace = mcp_events_to_v2_trace(events, "order_test".into(), None, None);
 
     // Check order of Step kinds/names
     let steps: Vec<String> = trace

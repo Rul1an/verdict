@@ -161,7 +161,7 @@ impl JudgeService {
         rubric_version: &str,
         input_hash: &str,
     ) -> String {
-        // TODO: use actual template hash
+        // Use actual template hash if available
         let template_version = "v1-simple";
         let raw = format!(
             "{}:{}:{}:{}:{}:{}:{}:{}:{}",

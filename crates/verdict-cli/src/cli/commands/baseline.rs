@@ -40,7 +40,7 @@ fn generate_markdown(report: &verdict_core::baseline::report::HygieneReport) -> 
         for note in &report.notes {
             md.push_str(&format!("- {}\n", note));
         }
-        md.push_str("\n");
+        md.push('\n');
     }
 
     md.push_str("### Test Stability & Performance\n\n");

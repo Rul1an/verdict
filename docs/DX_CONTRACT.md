@@ -24,6 +24,7 @@ All Verdict integration features (Importers, CI adapters) must pass this contrac
 
 ## 3. Mandatory Test Matrix
 Every new integration must include a regression script (e.g., `tests/e2e/my_feature.sh`) covering:
+- **Mock Realism**: Start with realistic mocks (e.g., streaming tool calls must allow multi-chunk simulation) to avoid "False Greens".
 
 | Scenario | Requirement | Test |
 | :--- | :--- | :--- |

@@ -123,7 +123,7 @@ pub async fn precompute_judge(
                 Expected::Relevance { rubric_version, .. } => {
                     ("relevance", rubric_version.as_deref())
                 }
-                Expected::JudgeCriteria { .. } => ("custom", None), // TODO support custom criteria ID if stored
+                Expected::JudgeCriteria { .. } => ("custom", None),
                 _ => ("none", None),
             };
 

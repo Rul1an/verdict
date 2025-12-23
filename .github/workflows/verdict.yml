@@ -22,6 +22,9 @@ jobs:
       - name: Build
         run: cargo build --release
 
+      - name: Rust Tests (Compile & Run)
+        run: cargo test --workspace
+
       - name: Verdict CI (Replay)
         run: |
           target/release/verdict ci \

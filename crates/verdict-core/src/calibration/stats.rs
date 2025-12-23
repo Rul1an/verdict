@@ -102,7 +102,7 @@ pub fn ingest_row(agg: &mut Aggregator, r: &TestResultRow) {
                     score,
                 );
 
-                // TODO: Uncomment if per-test granularity is requested via flag
+                // Uncomment if per-test granularity is requested via flag
                 // agg.push(MetricKey { metric: metric_name.clone(), test_id: Some(r.test_id.clone()) }, score);
             }
         }
