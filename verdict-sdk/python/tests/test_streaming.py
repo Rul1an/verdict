@@ -1,5 +1,5 @@
-from verdict_sdk.openai_streaming import StreamAccumulator
 from verdict_sdk.mocks.openai_stream_mock import MockOpenAIClient
+from verdict_sdk.openai_streaming import StreamAccumulator
 
 
 def test_stream_accumulates_tool_args():

@@ -120,7 +120,9 @@ class StreamAccumulator:
 
     def tool_calls(self) -> List[Dict[str, Any]]:
         out: List[Dict[str, Any]] = []
-        for (idx, tc_id), buf in sorted(self._tool_buf.items(), key=lambda x: (x[0][0], x[0][1])):
+        for (idx, tc_id), buf in sorted(
+            self._tool_buf.items(), key=lambda x: (x[0][0], x[0][1])
+        ):
             args_str = "".join(buf.get("args_parts", []))
             try:
                 args = json.loads(args_str) if args_str else {}

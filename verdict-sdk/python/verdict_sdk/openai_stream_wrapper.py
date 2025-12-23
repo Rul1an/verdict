@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Any, Dict, Iterator, List, Optional, Callable
+from typing import Any, Callable, Dict, Iterator, List, Optional
 
 from .clock import Clock, SystemClock
-from .recorder import EpisodeRecorder
-from .openai_streaming import StreamAccumulator
 from .openai_instrumentor import _extract_usage  # reuse
+from .openai_streaming import StreamAccumulator
+from .recorder import EpisodeRecorder
 
 
 @contextmanager
@@ -165,11 +165,15 @@ def record_chat_completions_stream_with_tools(
                         "function": {
                             "name": tc["name"],
                             # Re-serialize args for history fidelity, or use empty string if raw was bad
-                            "arguments": json.dumps(tc["args"]) if "_raw" not in tc["args"] else tc["args"]["_raw"],
+                            "arguments": (
+                                json.dumps(tc["args"])
+                                if "_raw" not in tc["args"]
+                                else tc["args"]["_raw"]
+                            ),
                         },
                     }
                     for tc in tcs
-                ]
+                ],
             }
             current_messages.append(assistant_msg)
 
@@ -211,11 +215,21 @@ def record_chat_completions_stream_with_tools(
                 )
 
                 tool_calls_summary.append(
-                    {"id": tc_id, "name": tool_name, "args": args, "result": result, "error": error}
+                    {
+                        "id": tc_id,
+                        "name": tool_name,
+                        "args": args,
+                        "result": result,
+                        "error": error,
+                    }
                 )
 
                 current_messages.append(
-                    {"role": "tool", "tool_call_id": tc_id, "content": "" if result is None else str(result)}
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc_id,
+                        "content": "" if result is None else str(result),
+                    }
                 )
 
             # 3) follow-up (non-stream) to keep client compat easy

@@ -13,7 +13,13 @@ def test_redaction_masks_values(tmp_path: Path):
     p = tmp_path / "t.jsonl"
     w = TraceWriter(p, redact_fn=redactor)
 
-    w.write_event({"type": "episode_start", "meta": {"authorization": "Bearer sk-SECRET"}, "input": {"prompt": "hello sk-ABC"}})
+    w.write_event(
+        {
+            "type": "episode_start",
+            "meta": {"authorization": "Bearer sk-SECRET"},
+            "input": {"prompt": "hello sk-ABC"},
+        }
+    )
 
     line = p.read_text(encoding="utf-8").splitlines()[0]
     obj = json.loads(line)

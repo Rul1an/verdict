@@ -2,18 +2,14 @@
 Verdict Python SDK: deterministic trace recording for regression gating.
 """
 
-from .writer import TraceWriter
+from .clock import FrozenClock, SystemClock
+from .openai_instrumentor import (record_chat_completions,
+                                  record_chat_completions_with_tools)
+from .openai_stream_wrapper import (record_chat_completions_stream,
+                                    record_chat_completions_stream_with_tools)
 from .recorder import EpisodeRecorder
-from .clock import SystemClock, FrozenClock
-from .openai_instrumentor import (
-    record_chat_completions,
-    record_chat_completions_with_tools,
-)
 from .redaction import make_redactor
-from .openai_stream_wrapper import (
-    record_chat_completions_stream,
-    record_chat_completions_stream_with_tools,
-)
+from .writer import TraceWriter
 
 __all__ = [
     "TraceWriter",

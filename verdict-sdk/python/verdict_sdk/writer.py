@@ -1,9 +1,11 @@
 from __future__ import annotations
+
 import json
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Union
 
 RedactFn = Callable[[Dict[str, Any]], Dict[str, Any]]
+
 
 class TraceWriter:
     def __init__(self, path: Union[str, Path], *, redact_fn: Optional[RedactFn] = None):

@@ -1,11 +1,15 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
+
 from .clock import Clock, SystemClock
 from .writer import TraceWriter
 
+
 def _step_id(n: int) -> str:
     return f"step_{n:03d}"
+
 
 @dataclass
 class EpisodeRecorder:
@@ -25,33 +29,50 @@ class EpisodeRecorder:
         if self.test_id:
             m["test_id"] = self.test_id
 
-        self.writer.write_event({
-            "type": "episode_start",
-            "episode_id": self.episode_id,
-            "timestamp": int(self.clock.now_ms()),
-            "input": {"prompt": self.prompt},
-            "meta": m,
-        })
+        self.writer.write_event(
+            {
+                "type": "episode_start",
+                "episode_id": self.episode_id,
+                "timestamp": int(self.clock.now_ms()),
+                "input": {"prompt": self.prompt},
+                "meta": m,
+            }
+        )
         return self
 
-    def step(self, *, kind: str, name: str, content: str = "", meta: Optional[Dict[str, Any]] = None) -> str:
+    def step(
+        self,
+        *,
+        kind: str,
+        name: str,
+        content: str = "",
+        meta: Optional[Dict[str, Any]] = None,
+    ) -> str:
         self._step_no += 1
         sid = _step_id(self._step_no)
-        self.writer.write_event({
-            "type": "step",
-            "episode_id": self.episode_id,
-            "step_id": sid,
-            "idx": self._idx,
-            "timestamp": int(self.clock.now_ms()),
-            "kind": kind,
-            "name": name,
-            "content": content,
-            "meta": meta or {},
-        })
+        self.writer.write_event(
+            {
+                "type": "step",
+                "episode_id": self.episode_id,
+                "step_id": sid,
+                "idx": self._idx,
+                "timestamp": int(self.clock.now_ms()),
+                "kind": kind,
+                "name": name,
+                "content": content,
+                "meta": meta or {},
+            }
+        )
         self._idx += 1
         return sid
 
-    def model_step(self, *, name: str = "openai", content: str = "", meta: Optional[Dict[str, Any]] = None) -> str:
+    def model_step(
+        self,
+        *,
+        name: str = "openai",
+        content: str = "",
+        meta: Optional[Dict[str, Any]] = None,
+    ) -> str:
         """Helper for standard model steps"""
         return self.step(kind="model", name=name, content=content, meta=meta)
 
@@ -72,18 +93,20 @@ class EpisodeRecorder:
         if tool_call_id:
             m["tool_call_id"] = tool_call_id
 
-        self.writer.write_event({
-            "type": "tool_call",
-            "episode_id": self.episode_id,
-            "step_id": step_id,
-            "timestamp": int(self.clock.now_ms()),
-            "tool_name": tool_name,
-            "call_index": int(call_index),
-            "args": args,
-            "result": result,
-            "error": error,
-            "meta": m,
-        })
+        self.writer.write_event(
+            {
+                "type": "tool_call",
+                "episode_id": self.episode_id,
+                "step_id": step_id,
+                "timestamp": int(self.clock.now_ms()),
+                "tool_name": tool_name,
+                "call_index": int(call_index),
+                "args": args,
+                "result": result,
+                "error": error,
+                "meta": m,
+            }
+        )
 
     def tool_call(
         self,
@@ -104,32 +127,38 @@ class EpisodeRecorder:
         if tool_call_id:
             m["tool_call_id"] = tool_call_id
 
-        self.writer.write_event({
-            "type": "tool_call",
-            "episode_id": self.episode_id,
-            "step_id": sid,
-            "timestamp": int(self.clock.now_ms()),
-            "tool_name": tool_name,
-            "call_index": int(call_index),
-            "args": args,
-            "result": result,
-            "error": error,
-            "meta": m,
-        })
+        self.writer.write_event(
+            {
+                "type": "tool_call",
+                "episode_id": self.episode_id,
+                "step_id": sid,
+                "timestamp": int(self.clock.now_ms()),
+                "tool_name": tool_name,
+                "call_index": int(call_index),
+                "args": args,
+                "result": result,
+                "error": error,
+                "meta": m,
+            }
+        )
 
         return
 
-    def end(self, *, outcome: str = "pass", meta: Optional[Dict[str, Any]] = None) -> None:
+    def end(
+        self, *, outcome: str = "pass", meta: Optional[Dict[str, Any]] = None
+    ) -> None:
         if self._ended:
             return
         self._ended = True
-        self.writer.write_event({
-            "type": "episode_end",
-            "episode_id": self.episode_id,
-            "timestamp": int(self.clock.now_ms()),
-            "outcome": outcome,
-            "meta": meta or {},
-        })
+        self.writer.write_event(
+            {
+                "type": "episode_end",
+                "episode_id": self.episode_id,
+                "timestamp": int(self.clock.now_ms()),
+                "outcome": outcome,
+                "meta": meta or {},
+            }
+        )
 
     def __exit__(self, exc_type, exc, tb) -> None:
         if not self._ended:
