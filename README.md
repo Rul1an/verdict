@@ -11,6 +11,7 @@ Verdict is a local-first tool for evaluating AI agents and RAG pipelines. It pro
 
 *   **Performance**: Native Rust binary. No Python runtime overhead for the evaluation engine.
 *   **CI Native**: Deterministic replay mode prevents flaky tests and enables offline regression gating.
+*   **MCP Support**: Native integration with the **Model Context Protocol**. Import inspector/JSON-RPC transcripts directly.
 *   **Observability**: OpenTelemetry ingestion and a real-time Terminal UI (TUI) for debugging.
 *   **Architecture**: Typesafe SQLite storage for all traces and results.
 
@@ -34,7 +35,25 @@ verdict ci \
   --strict
 ```
 
-### 3. Interactive TUI
+### 3. MCP Gate (Model Context Protocol)
+Validate an agent transcript from Anthropic Inspector or JSON-RPC logs:
+```bash
+# 1. Import trace
+verdict trace import-mcp \
+    --input session.json \
+    --format inspector \
+    --test-id mcp_test_1 \
+    --out-trace trace.v2.jsonl
+
+# 2. Run Gate (Ephemeral DB)
+verdict ci \
+    --config verdict.yaml \
+    --trace-file trace.v2.jsonl \
+    --replay-strict \
+    --db :memory:
+```
+
+### 4. Interactive TUI
 Run the reference agent implementation:
 ```bash
 cd examples/agent-demo-2
