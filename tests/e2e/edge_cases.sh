@@ -30,8 +30,8 @@ tests:
       type: regex_match
       pattern: ".*"
     assert:
-      - type: trace_must_not_call_tool
-        tool: "unsafe_tool"
+      - type: trace_must_call_tool
+        tool: "ApplyDiscount"
 EOF
 
 OUT_MISMATCH=$($VERDICT ci \
@@ -79,8 +79,8 @@ tests:
       type: regex_match
       pattern: ".*"
     assert:
-      - type: trace_must_not_call_tool
-        tool: "unsafe_tool"
+      - type: trace_must_call_tool
+        tool: "ApplyDiscount"
 EOF
 
 OUT_MULTI=$($VERDICT ci \
@@ -109,8 +109,8 @@ tests:
       type: regex_match
       pattern: ".*"
     assert:
-      - type: trace_must_not_call_tool
-        tool: "unsafe_tool"
+      - type: trace_must_call_tool
+        tool: "ApplyDiscount"
 EOF
 
 set +e

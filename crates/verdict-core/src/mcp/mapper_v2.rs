@@ -193,8 +193,12 @@ pub fn mcp_events_to_v2_trace(
                             truncations: vec![],
                         }));
                     } else {
-                        // Orphan response?
-                        // Log or ignore? Best effort: emit as unlinked Step?
+                        // Orphan response: no matching pending tool call request
+                        eprintln!(
+                            "mcp_events_to_v2_trace: orphan ToolCallResponse with jsonrpc_id {:?} in episode {}",
+                            id,
+                            episode_id
+                        );
                     }
                 }
                 // Heuristic: Last response is final output

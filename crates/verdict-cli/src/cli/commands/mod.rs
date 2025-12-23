@@ -172,11 +172,11 @@ async fn cmd_ci(args: CiArgs) -> anyhow::Result<i32> {
         return Ok(exit_codes::CONFIG_ERROR);
     }
 
-    // PR-406: Shared Store for Auto-Ingest
+    // Shared Store for Auto-Ingest
     let store = verdict_core::storage::Store::open(&args.db)?;
     store.init_schema()?; // Ensure tables exist for ingest
 
-    // PR-406: In Strict Replay mode, we MUST ingest the trace into the DB
+    // In Strict Replay mode, we MUST ingest the trace into the DB
     // so that Agent Assertions (which query the DB) can find the episodes/steps.
     if args.replay_strict {
         if let Some(trace_path) = &args.trace_file {

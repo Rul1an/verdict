@@ -14,7 +14,7 @@ All Verdict integration features (Importers, CI adapters) must pass this contrac
 - [ ] **Idempotency**: Can I run this command 2x against the same DB without error?
     - *Implementation*: Use `ON CONFLICT DO UPDATE` or `DO NOTHING`.
 - [ ] **Ephemeral Support**: Does this work with `--db :memory:` or a temp file?
-- **Feedback**: Does the command print exactly *one* useful log line per major action (e.g., ingest)?
+- [ ] **Feedback**: Does the command print exactly *one* useful log line per major action (e.g., ingest)?
     - *Bad*: Silent execution.
     - *Bad*: Spamming 1000 lines of debug logs.
 
