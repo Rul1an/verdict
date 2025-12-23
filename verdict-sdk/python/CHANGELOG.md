@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.4.0] - 2025-12-23
+## [0.6.0] - 2025-12-23
 
 ### Added
 - **Async OpenAI Support**: Full `async`/`await` parity implemented in `verdict_sdk.async_openai`. Supports `record_chat_completions`, `record_chat_completions_with_tools`, and `record_chat_completions_stream`.
