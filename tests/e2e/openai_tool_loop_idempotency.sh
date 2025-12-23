@@ -37,7 +37,7 @@ export VERDICT_TRACE="$TRACE_FILE"
 export OPENAI_API_KEY="mock"
 export RECORDER_MODE="loop"
 
-python3 verdict-sdk/python/examples/openai_record.py
+python3 verdict-sdk/python/examples/openai-demo/record_sync.py
 $VERDICT ci --config "$LOOP_CONFIG" --trace-file "$TRACE_FILE" --db :memory: --replay-strict
 
 # 2. Second Run (Re-run)
@@ -45,7 +45,7 @@ $VERDICT ci --config "$LOOP_CONFIG" --trace-file "$TRACE_FILE" --db :memory: --r
 # This proves process idempotency.
 echo "Run 2: Re-Recording (Truncate) & CI"
 : > "$TRACE_FILE"
-python3 verdict-sdk/python/examples/openai_record.py
+python3 verdict-sdk/python/examples/openai-demo/record_sync.py
 
 $VERDICT ci --config "$LOOP_CONFIG" --trace-file "$TRACE_FILE" --db :memory: --replay-strict
 

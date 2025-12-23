@@ -7,7 +7,7 @@ from verdict_sdk import TraceWriter, record_chat_completions, record_chat_comple
 # --- Tool Executors ---
 # Import from local tools.py if available, else define inline
 try:
-    sys.path.append(os.path.dirname(__file__) + "/openai-demo")
+    sys.path.append(os.path.dirname(__file__))
     from tools import GetWeather
 except ImportError:
     def GetWeather(args): return {"temp": 22}

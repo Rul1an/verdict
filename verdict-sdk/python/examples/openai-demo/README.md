@@ -19,7 +19,7 @@ export PYTHONPATH=../../
 export VERDICT_TRACE=traces/openai.jsonl
 export OPENAI_API_KEY=mock
 
-python3 ../openai_record.py
+python3 record_sync.py
 ```
 
 ### 2. Tool Loop Trace (Phase 1.2)
@@ -27,7 +27,7 @@ Run the script in loop mode (executes tools, records results).
 
 ```bash
 export RECORDER_MODE=loop
-python3 ../openai_record.py
+python3 record_sync.py
 ```
 
 ### 3. Verify with Verdict
