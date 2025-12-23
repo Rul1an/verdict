@@ -1,39 +1,20 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Callable, Dict, List, Optional, Union
+from contextlib import asynccontextmanager
+from typing import Any, AsyncIterator, Callable, Dict, Iterator, List, Optional
 
 from .clock import Clock, SystemClock
+from .openai_instrumentor import _extract_usage, _jsonable
+from .openai_streaming import StreamAccumulator
 from .recorder import EpisodeRecorder
 from .writer import TraceWriter
 
 
-def _extract_usage(response: Any) -> Dict[str, Any]:
-    usage_dict = {}
-    if getattr(response, "usage", None):
-        u = response.usage
-        if hasattr(u, "dict"):
-            usage_dict = u.dict()
-        elif hasattr(u, "model_dump"):
-            usage_dict = u.model_dump()
-        else:
-            usage_dict = dict(u)
-    return usage_dict
-
-
-def _jsonable(x: Any) -> Any:
-    """Helper to ensure value is JSON serializable, else returns stringified dict."""
-    try:
-        json.dumps(x)
-        return x
-    except (TypeError, ValueError, OverflowError):
-        return {"_raw": str(x)}
-
-
-def record_chat_completions(
+async def record_chat_completions(
     *,
     writer: Optional[TraceWriter] = None,
-    client: Any,
+    client: Any,  # Expected AsyncOpenAI
     model: str,
     messages: List[Dict[str, Any]],
     tools: Optional[List[Dict[str, Any]]] = None,
@@ -46,9 +27,8 @@ def record_chat_completions(
     clock: Optional[Clock] = None,
 ) -> Dict[str, Any]:
     """
-    Executes OpenAI chat.completions call and records Verdict V2 trace events.
+    Async version of record_chat_completions.
     """
-    # Prompt determination logic
     if writer is None:
         from .context import current_writer
 
@@ -66,15 +46,18 @@ def record_chat_completions(
         if prompt is None:
             prompt = ""
 
-    # Setup Recorder
-    rec_meta = meta or {}
+    # EpisodeRecorder is sync (just writes to memory/disk), checking enter/exit usage.
+    # It is a context manager, but we need to verify if context managers need 'async with'.
+    # EpisodeRecorder uses `__enter__` and `__exit__`. We can use `with` inside async func
+    # because file I/O in TraceWriter is ostensibly synchronous or fast enough.
+    # Ideally TraceWriter would be async for high-throughput, but for this phase we wrap sync IO.
 
     with EpisodeRecorder(
         writer=writer,
         episode_id=episode_id,
         test_id=test_id,
         prompt=prompt,
-        meta=rec_meta,
+        meta=meta or {},
         clock=clock or SystemClock(),
     ) as ep:
 
@@ -88,7 +71,8 @@ def record_chat_completions(
         if tool_choice is not None:
             kwargs["tool_choice"] = tool_choice
 
-        response = client.chat.completions.create(**kwargs)
+        # ASYNC AWAIT HERE
+        response = await client.chat.completions.create(**kwargs)
 
         choices = getattr(response, "choices", None) or []
         if not choices:
@@ -98,7 +82,6 @@ def record_chat_completions(
 
         content = message.content or ""
 
-        # Model Output
         sid = ep.step(
             kind="model",
             name="openai",
@@ -110,7 +93,6 @@ def record_chat_completions(
             },
         )
 
-        # Tool Calls
         tool_calls_out = []
         if message.tool_calls:
             for i, tc in enumerate(message.tool_calls):
@@ -121,7 +103,6 @@ def record_chat_completions(
                 except (json.JSONDecodeError, TypeError):
                     args_obj = {"_raw": str(args_val)}
 
-                # Safe ID extraction (consistent with Loop logic)
                 tc_id = getattr(tc, "id", None) or f"{sid}:{i}"
 
                 ep.tool_call(
@@ -136,7 +117,6 @@ def record_chat_completions(
 
                 tool_calls_out.append({"name": fn.name, "args": args_obj, "id": tc_id})
 
-        # Explicit Pass
         ep.end(outcome="pass")
 
         return {
@@ -148,7 +128,7 @@ def record_chat_completions(
         }
 
 
-def record_chat_completions_with_tools(
+async def record_chat_completions_with_tools(
     *,
     writer: Optional[TraceWriter] = None,
     client: Any,
@@ -156,7 +136,9 @@ def record_chat_completions_with_tools(
     messages: List[Dict[str, Any]],
     tools: Optional[List[Dict[str, Any]]] = None,
     tool_choice: Any = None,
-    tool_executors: Optional[Dict[str, Callable[[Dict[str, Any]], Any]]] = None,
+    tool_executors: Optional[
+        Dict[str, Callable[[Dict[str, Any]], Any]]
+    ] = None,  # Can be sync or async? Assuming sync for now or we need logic check
     max_tool_rounds: int = 4,
     temperature: Optional[float] = 0.0,
     episode_id: str,
@@ -166,7 +148,7 @@ def record_chat_completions_with_tools(
     clock: Optional[Clock] = None,
 ) -> Dict[str, Any]:
     """
-    Executes OpenAI chat loop with tool execution.
+    Async version of tool loop. Supports async tool executors if they are awaitable.
     """
     if writer is None:
         from .context import current_writer
@@ -211,7 +193,9 @@ def record_chat_completions_with_tools(
             if tool_choice is not None:
                 kwargs["tool_choice"] = tool_choice
 
-            response = client.chat.completions.create(**kwargs)
+            # ASYNC AWAIT
+            response = await client.chat.completions.create(**kwargs)
+
             choices = getattr(response, "choices", None) or []
             if not choices:
                 break
@@ -236,7 +220,6 @@ def record_chat_completions_with_tools(
                     tc_id = getattr(tc, "id", None) or f"{sid}:{i}"
                     normalized_tool_calls.append((i, tc_id, tc))
 
-            # Construct Assistant Message
             assistant_msg = {"role": "assistant", "content": content_chunk}
             if normalized_tool_calls:
                 assistant_msg["tool_calls"] = [
@@ -252,7 +235,6 @@ def record_chat_completions_with_tools(
                 ]
             current_messages.append(assistant_msg)
 
-            # Process Tools
             if normalized_tool_calls:
                 for i, tc_id, tc in normalized_tool_calls:
                     fn = tc.function
@@ -269,7 +251,13 @@ def record_chat_completions_with_tools(
                     tool_call_res_meta = {}
                     if executor:
                         try:
+                            # Support both sync and async executors!
+                            import inspect
+
                             raw_result = executor(args_obj)
+                            if inspect.isawaitable(raw_result):
+                                raw_result = await raw_result
+
                             result_obj = _jsonable(raw_result)
                         except Exception as e:
                             error_msg = str(e)
@@ -329,3 +317,84 @@ def record_chat_completions_with_tools(
             "content": content,
             "messages": current_messages,
         }
+
+
+@asynccontextmanager
+async def record_chat_completions_stream(
+    *,
+    writer: Optional[TraceWriter] = None,
+    client: Any,
+    model: str,
+    messages: List[Dict[str, Any]],
+    tools: Optional[List[Dict[str, Any]]] = None,
+    temperature: Optional[float] = 0.0,
+    episode_id: str,
+    test_id: Optional[str] = None,
+    prompt: Optional[str] = None,
+    meta: Optional[Dict[str, Any]] = None,
+    clock: Optional[Clock] = None,
+) -> AsyncIterator[AsyncIterator[Any]]:
+    """
+    Async streaming generator.
+    """
+    if writer is None:
+        from .context import current_writer
+
+        writer = current_writer()
+        if writer is None:
+            raise ValueError("No writer provided and no active context found.")
+
+    if prompt is None:
+        prompt = ""
+        for m in reversed(messages):
+            if m.get("role") == "user":
+                prompt = str(m.get("content", "") or "")
+                break
+
+    with EpisodeRecorder(
+        writer=writer,
+        episode_id=episode_id,
+        test_id=test_id,
+        prompt=prompt,
+        meta=meta or {},
+        clock=clock or SystemClock(),
+    ) as ep:
+        acc = StreamAccumulator()
+
+        # ASYNC API
+        stream = await client.chat.completions.create(
+            model=model,
+            messages=messages,
+            tools=tools,
+            temperature=temperature,
+            stream=True,
+        )
+
+        async def _aiter() -> AsyncIterator[Any]:
+            try:
+                async for chunk in stream:
+                    acc.feed_chunk(chunk)
+                    yield chunk
+            finally:
+                content = acc.aggregated_content()
+                sid = ep.model_step(
+                    content=content,
+                    meta={
+                        "gen_ai.request.model": model,
+                        "gen_ai.response.model": model,
+                        "gen_ai.stream": True,
+                        "gen_ai.finish_reason": acc.finish_reason,
+                    },
+                )
+                for tc in acc.tool_calls():
+                    ep.tool_call(
+                        tool_name=tc["name"],
+                        args=tc["args"],
+                        step_id=sid,
+                        call_index=int(tc["index"]),
+                        tool_call_id=str(tc["id"]),
+                    )
+
+                ep.end(outcome="pass")
+
+        yield _aiter()

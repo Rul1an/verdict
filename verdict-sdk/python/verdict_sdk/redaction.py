@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Callable, Dict, Iterable, List, Optional, Pattern, Tuple
-
+from typing import (Any, Callable, Dict, Iterable, List, Optional, Pattern,
+                    Tuple)
 
 _DEFAULT_KEY_DENYLIST = (
     "authorization",
@@ -13,8 +13,10 @@ _DEFAULT_KEY_DENYLIST = (
     "set-cookie",
 )
 
+
 def _compile(patterns: Iterable[str]) -> List[Pattern[str]]:
     return [re.compile(p) for p in patterns]
+
 
 def make_redactor(
     *,

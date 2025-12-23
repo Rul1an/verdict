@@ -30,11 +30,25 @@ export RECORDER_MODE=loop
 python3 record_sync.py
 ```
 
-### 3. Verify with Verdict
-Run the CI gate. Since we recorded the tool calls, `trace_must_call_tool` should pass.
+### 3. Streaming Trace
+Run in streaming mode.
 
 ```bash
-# Ensure correct config is used (may depend on exact test ID in yaml)
+export RECORDER_MODE=stream
+python3 record_sync.py
+```
+
+### 4. Async Usage (Phase 1.4)
+Run the async version of the recorder. Supports `simple`, `loop`, and `stream` modes via `RECORDER_MODE`.
+
+```bash
+python3 record_async.py
+```
+
+### 5. Verify with Verdict
+Run the CI gate.
+
+```bash
 ../../../target/release/verdict ci \
   --config verdict.yaml \
   --trace-file traces/openai.jsonl \

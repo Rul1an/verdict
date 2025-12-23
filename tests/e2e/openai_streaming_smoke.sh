@@ -14,7 +14,8 @@ CONFIG_FILE="$PWD/verdict-sdk/python/examples/openai-demo/verdict_stream.yaml"
 
 echo "Recording Streaming Trace (Mock)..."
 export VERDICT_TRACE="$TRACE_FILE"
-python3 verdict-sdk/python/examples/openai-demo/openai_record_stream.py
+export RECORDER_MODE=stream
+python3 verdict-sdk/python/examples/openai-demo/record_sync.py
 
 echo "Trace sanity:"
 grep '"type":"episode_start"' "$TRACE_FILE" >/dev/null

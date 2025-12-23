@@ -1,11 +1,13 @@
+import asyncio
 import os
 import sys
 from dataclasses import dataclass, field
-from typing import Any, Iterator, List, Optional
+from typing import Any, List, Optional
 
-from verdict_sdk import (TraceWriter, record_chat_completions,
-                         record_chat_completions_stream,
-                         record_chat_completions_with_tools)
+from verdict_sdk import TraceWriter
+from verdict_sdk.async_openai import (record_chat_completions,
+                                      record_chat_completions_stream,
+                                      record_chat_completions_with_tools)
 
 # --- Tool Executors ---
 try:
@@ -17,7 +19,7 @@ except ImportError:
         return {"temp": 22}
 
 
-# --- Mock OpenAI Client ---
+# --- Mock Infrastructure (Async) ---
 @dataclass
 class MockUsage:
     prompt_tokens: int = 10
@@ -30,8 +32,8 @@ class MockUsage:
 
 @dataclass
 class MockFunction:
-    name: str
-    arguments: str
+    name: str = "GetWeather"
+    arguments: str = "{}"
 
 
 @dataclass
@@ -101,33 +103,22 @@ class MockStreamChoice:
     delta: MockDelta = field(default_factory=MockDelta)
     finish_reason: Optional[str] = None
 
-    def dict(self):
-        return {
-            "index": self.index,
-            "delta": self.delta.dict(),
-            "finish_reason": self.finish_reason,
-        }
-
 
 @dataclass
 class MockStreamChunk:
     choices: List[MockStreamChoice]
     model: str = "gpt-4o-stream"
 
-    # Minimal attribute access emulation
-    def __getattr__(self, name):
-        if name == "choices":
-            return self.choices
-        raise AttributeError(name)
-
 
 class MockCompletions:
-    def create(self, **kwargs):
+    async def create(self, **kwargs):
         stream = kwargs.get("stream", False)
         if stream:
             return self._create_stream(**kwargs)
 
-        # Non-streaming Logic
+        # Simulate Network Delay
+        await asyncio.sleep(0.01)
+
         msgs = kwargs.get("messages", [])
         if not msgs:
             return MockResponse(
@@ -139,11 +130,7 @@ class MockCompletions:
 
         if last_msg.get("role") == "tool":
             return MockResponse(
-                choices=[
-                    MockChoice(
-                        message=MockMessage(content="The weather in Tokyo is 22C.")
-                    )
-                ]
+                choices=[MockChoice(message=MockMessage(content="The weather is 22C."))]
             )
 
         prompt = last_msg.get("content", "") or ""
@@ -155,7 +142,7 @@ class MockCompletions:
                             content="",
                             tool_calls=[
                                 MockToolCall(
-                                    id="call_mock_123",
+                                    id="call_mock_async",
                                     function=MockFunction(
                                         name="GetWeather",
                                         arguments='{"location": "Tokyo"}',
@@ -171,70 +158,25 @@ class MockCompletions:
                 choices=[MockChoice(message=MockMessage(content="I am a mock AI."))]
             )
 
-    def _create_stream(self, **kwargs):
-        # Check prompt for "weather" to trigger tool call
-        msgs = kwargs.get("messages", [])
-        prompt = (msgs[-1].get("content", "") or "") if msgs else ""
-
-        if "weather" in prompt.lower():
-            # Mock Tool Call Stream
-            # 1. Start Tool Call
-            yield MockStreamChunk(
-                choices=[
-                    MockStreamChoice(
-                        delta=MockDelta(
-                            role="assistant",
-                            tool_calls=[
-                                {
-                                    "index": 0,
-                                    "id": "call_stream_123",
-                                    "type": "function",
-                                    "function": {"name": "GetWeather", "arguments": ""},
-                                }
-                            ],
-                        )
-                    )
-                ]
-            )
-            # 2. Args
-            yield MockStreamChunk(
-                choices=[
-                    MockStreamChoice(
-                        delta=MockDelta(
-                            tool_calls=[
-                                {
-                                    "index": 0,
-                                    "function": {"arguments": '{"location": "Tokyo"}'},
-                                }
-                            ]
-                        )
-                    )
-                ]
-            )
-            # 3. Finish
-            yield MockStreamChunk(
-                choices=[
-                    MockStreamChoice(finish_reason="tool_calls", delta=MockDelta())
-                ]
-            )
-        else:
-            # Generator for streaming chunks
-            yield MockStreamChunk(
-                choices=[
-                    MockStreamChoice(
-                        delta=MockDelta(role="assistant", content="Streaming ")
-                    )
-                ]
-            )
-            yield MockStreamChunk(
-                choices=[MockStreamChoice(delta=MockDelta(content="mock "))]
-            )
-            yield MockStreamChunk(
-                choices=[MockStreamChoice(delta=MockDelta(content="data."))]
-            )
-            yield MockStreamChunk(
-                choices=[MockStreamChoice(finish_reason="stop", delta=MockDelta())]
-            )
+    async def _create_stream(self, **kwargs):
+        # Async Generator for streaming chunks
+        await asyncio.sleep(0.01)
+        yield MockStreamChunk(
+            choices=[
+                MockStreamChoice(
+                    delta=MockDelta(role="assistant", content="Async Streaming ")
+                )
+            ]
+        )
+        yield MockStreamChunk(
+            choices=[MockStreamChoice(delta=MockDelta(content="mock "))]
+        )
+        yield MockStreamChunk(
+            choices=[MockStreamChoice(delta=MockDelta(content="data."))]
+        )
+        yield MockStreamChunk(
+            choices=[MockStreamChoice(finish_reason="stop", delta=MockDelta())]
+        )
 
 
 class MockChat:
@@ -245,23 +187,23 @@ class MockClient:
     chat = MockChat()
 
 
-# --- Main Example Flow ---
+# --- Async Main ---
 
 
-def main():
+async def main():
     api_key = os.environ.get("OPENAI_API_KEY", "")
     use_mock = api_key == "mock" or not api_key
-    mode = os.environ.get("RECORDER_MODE", "simple")  # simple | loop | stream
+    mode = os.environ.get("RECORDER_MODE", "simple")
 
     if use_mock:
-        print("Using Mock OpenAI Client")
+        print("Using Async Mock OpenAI Client")
         client = MockClient()
     else:
-        import openai
+        from openai import AsyncOpenAI
 
-        client = openai.OpenAI(api_key=api_key)
+        client = AsyncOpenAI(api_key=api_key)
 
-    trace_path = os.environ.get("VERDICT_TRACE", "traces/openai.jsonl")
+    trace_path = os.environ.get("VERDICT_TRACE", "traces/openai_async.jsonl")
     writer = TraceWriter(trace_path)
 
     messages = [{"role": "user", "content": "What's the weather like in Tokyo?"}]
@@ -279,49 +221,50 @@ def main():
     ]
 
     if mode == "loop":
-        print(f"Recording Loop to {trace_path}...")
-        result = record_chat_completions_with_tools(
+        print(f"Recording Async Loop to {trace_path}...")
+        result = await record_chat_completions_with_tools(
             writer=writer,
             client=client,
             model="gpt-4o-mini",
             messages=messages,
             tools=tools,
             tool_executors={"GetWeather": GetWeather},
-            episode_id="openai_loop_demo",
-            test_id="openai_loop_demo",
+            episode_id="async_loop_demo",
+            test_id="async_loop_demo",
             prompt=messages[0]["content"],
         )
-        print(f"Done Loop. Tool Results: {result['tool_calls']}")
+        print(f"Done Async Loop. Result: {result['content']}")
+
     elif mode == "stream":
-        print(f"Recording Stream to {trace_path}...")
-        with record_chat_completions_stream(
-            writer=writer,
-            client=client,
-            model="gpt-4o-mini",
-            messages=messages,
-            tools=tools,  # Stream doesn't execute tools by default unless using specialized wrapper
-            episode_id="openai_stream_demo",
-            test_id="openai_stream_demo",
-            prompt=messages[0]["content"],
-        ) as stream:
-            for chunk in stream:
-                # Just consume
-                pass
-        print("Done Stream.")
-    else:
-        print(f"Recording Simple to {trace_path}...")
-        result = record_chat_completions(
+        print(f"Recording Async Stream to {trace_path}...")
+        async with record_chat_completions_stream(
             writer=writer,
             client=client,
             model="gpt-4o-mini",
             messages=messages,
             tools=tools,
-            episode_id="openai_weather_demo",
-            test_id="openai_weather_demo",
+            episode_id="async_stream_demo",
+            test_id="async_stream_demo",
+            prompt=messages[0]["content"],
+        ) as stream:
+            async for chunk in stream:
+                pass
+        print("Done Async Stream.")
+
+    else:
+        print(f"Recording Async Simple to {trace_path}...")
+        result = await record_chat_completions(
+            writer=writer,
+            client=client,
+            model="gpt-4o-mini",
+            messages=messages,
+            tools=tools,
+            episode_id="async_simple_demo",
+            test_id="async_simple_demo",
             prompt=messages[0]["content"],
         )
-        print(f"Done Simple.")
+        print(f"Done Async Simple.")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

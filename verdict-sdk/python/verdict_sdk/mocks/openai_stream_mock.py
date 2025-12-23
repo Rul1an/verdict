@@ -65,7 +65,10 @@ class MockCompletions:
                                         "index": 0,
                                         "id": call_id,
                                         "type": "function",
-                                        "function": {"name": "GetWeather", "arguments": '{"location": '},
+                                        "function": {
+                                            "name": "GetWeather",
+                                            "arguments": '{"location": ',
+                                        },
                                     }
                                 ]
                             )
@@ -81,15 +84,31 @@ class MockCompletions:
                                         "index": 0,
                                         "id": call_id,
                                         "type": "function",
-                                        "function": {"name": "GetWeather", "arguments": '"Tokyo"}'},
+                                        "function": {
+                                            "name": "GetWeather",
+                                            "arguments": '"Tokyo"}',
+                                        },
                                     }
                                 ]
                             )
                         )
                     ]
                 ),
-                MockChunk(choices=[MockChoice(delta=MockDelta(content=""))], usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}),
-                MockChunk(choices=[MockChoice(delta=MockDelta(content=""), finish_reason="tool_calls")]),
+                MockChunk(
+                    choices=[MockChoice(delta=MockDelta(content=""))],
+                    usage={
+                        "prompt_tokens": 10,
+                        "completion_tokens": 5,
+                        "total_tokens": 15,
+                    },
+                ),
+                MockChunk(
+                    choices=[
+                        MockChoice(
+                            delta=MockDelta(content=""), finish_reason="tool_calls"
+                        )
+                    ]
+                ),
             ]
             return MockStream(chunks)
 
@@ -97,7 +116,12 @@ class MockCompletions:
         chunks2: List[MockChunk] = [
             MockChunk(choices=[MockChoice(delta=MockDelta(content="Hello "))]),
             MockChunk(choices=[MockChoice(delta=MockDelta(content="world"))]),
-            MockChunk(choices=[MockChoice(delta=MockDelta(content="!"), finish_reason="stop")], usage={"prompt_tokens": 1, "completion_tokens": 3, "total_tokens": 4}),
+            MockChunk(
+                choices=[
+                    MockChoice(delta=MockDelta(content="!"), finish_reason="stop")
+                ],
+                usage={"prompt_tokens": 1, "completion_tokens": 3, "total_tokens": 4},
+            ),
         ]
         return MockStream(chunks2)
 
