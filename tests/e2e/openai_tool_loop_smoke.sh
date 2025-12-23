@@ -18,7 +18,7 @@ export VERDICT_TRACE="$TRACE_FILE"
 export OPENAI_API_KEY="mock"
 export RECORDER_MODE="loop"
 
-python3 verdict-sdk/python/examples/openai_record.py
+python3 verdict-sdk/python/examples/openai-demo/record_sync.py
 
 echo "Trace Content (grep result):"
 grep '"result":' "$TRACE_FILE" || { echo "❌ Failed: No tool result recorded"; exit 1; }

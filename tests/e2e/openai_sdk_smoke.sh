@@ -19,7 +19,7 @@ echo "Recording Trace..."
 export VERDICT_TRACE="$TRACE_FILE"
 export OPENAI_API_KEY="mock"
 
-python3 verdict-sdk/python/examples/openai_record.py
+python3 verdict-sdk/python/examples/openai-demo/record_sync.py
 
 echo "Trace Content:"
 cat "$TRACE_FILE"
