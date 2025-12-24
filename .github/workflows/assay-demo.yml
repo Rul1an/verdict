@@ -22,7 +22,7 @@ jobs:
 
       - name: Gate (RAG grounding / replay + baseline)
         run: |
-          target/release/verdict ci \
+          target/release/assay ci \
             --config examples/rag-grounding/eval.yaml \
             --trace-file examples/rag-grounding/traces/good.jsonl \
             --baseline examples/rag-grounding/baseline.json \
@@ -32,7 +32,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: verdict-demo-reports
+          name: assay-demo-reports
           path: |
             junit.xml
             sarif.json

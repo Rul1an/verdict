@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/verdict-sdk
+      url: https://pypi.org/p/assay-python-sdk
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
       contents: read
@@ -28,11 +28,11 @@ jobs:
 
       - name: Build package
         run: |
-          cd verdict-sdk/python
+          cd assay-python-sdk/python
           python -m build
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages_dir: verdict-sdk/python/dist/
+          packages_dir: assay-python-sdk/python/dist/
           print_hash: true

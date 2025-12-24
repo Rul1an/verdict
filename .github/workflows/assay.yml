@@ -27,7 +27,7 @@ jobs:
 
       - name: Verdict CI (Replay)
         run: |
-          target/release/verdict ci \
+          target/release/assay ci \
             --config ci-eval.yaml \
             --trace-file traces/ci.jsonl \
             --junit junit.xml \
@@ -39,7 +39,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: verdict-reports
+          name: assay-reports
           path: |
             junit.xml
             sarif.json

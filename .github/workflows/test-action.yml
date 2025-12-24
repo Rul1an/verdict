@@ -1,4 +1,4 @@
-name: verdict-action-contract-tests
+name: assay-action-contract-tests
 
 on:
   workflow_dispatch:
@@ -30,7 +30,7 @@ jobs:
           YAML
 
           cat > fixtures/sub/traces/ok.jsonl <<'JSONL'
-          {"schema_version":1,"type":"verdict.trace","request_id":"1","prompt":"p1","response":"hello world","model":"trace","provider":"trace","meta":{}}
+          {"schema_version":1,"type":"assay.trace","request_id":"1","prompt":"p1","response":"hello world","model":"trace","provider":"trace","meta":{}}
           JSONL
 
       - name: Build Verdict (Current Commit)
@@ -38,20 +38,20 @@ jobs:
 
       - name: Run action (workdir)
         env:
-          VERDICT_BIN: ${{ github.workspace }}/target/release/verdict
+          ASSAY_BIN: ${{ github.workspace }}/target/release/assay
         working-directory: fixtures/sub
         run: |
-          $VERDICT_BIN ci \
+          $ASSAY_BIN ci \
             --config eval.yaml \
             --trace-file traces/ok.jsonl
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: verdict-reports-smoke
+          name: assay-reports-smoke
           path: |
             fixtures/sub/junit.xml
-            fixtures/sub/verdict.sarif
+            fixtures/sub/assay.sarif
           if-no-files-found: ignore
 
   export_baseline_artifact:
@@ -76,7 +76,7 @@ jobs:
           YAML
 
           cat > fixtures/export/traces/ok.jsonl <<'JSONL'
-          {"schema_version":1,"type":"verdict.trace","request_id":"1","prompt":"p1","response":"hello world","model":"trace","provider":"trace","meta":{}}
+          {"schema_version":1,"type":"assay.trace","request_id":"1","prompt":"p1","response":"hello world","model":"trace","provider":"trace","meta":{}}
           JSONL
 
       - name: Build Verdict (Current Commit)
@@ -84,10 +84,10 @@ jobs:
 
       - name: Export baseline
         env:
-          VERDICT_BIN: ${{ github.workspace }}/target/release/verdict
+          ASSAY_BIN: ${{ github.workspace }}/target/release/assay
         working-directory: fixtures/export
         run: |
-          $VERDICT_BIN ci \
+          $ASSAY_BIN ci \
             --config eval.yaml \
             --trace-file traces/ok.jsonl \
             --export-baseline baseline.json
@@ -95,7 +95,7 @@ jobs:
       - name: Upload Baseline Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: verdict-baseline
+          name: assay-baseline
           path: fixtures/export/baseline.json
 
       - name: Assert baseline exists

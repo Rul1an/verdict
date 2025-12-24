@@ -47,30 +47,30 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.use_cross }}" == "true" ]; then
-            cross build -p verdict-cli --release --target ${{ matrix.target }}
+            cross build -p assay-cli --release --target ${{ matrix.target }}
           else
-            cargo build -p verdict-cli --release --target ${{ matrix.target }}
+            cargo build -p assay-cli --release --target ${{ matrix.target }}
           fi
 
       - name: Package Asset
         shell: bash
         run: |
           # Create strict staging dir
-          staging="verdict-${{ matrix.suffix }}"
+          staging="assay-${{ matrix.suffix }}"
           mkdir -p "$staging"
 
           # Copy binary to root of staging
-          cp "target/${{ matrix.target }}/release/verdict" "$staging/"
+          cp "target/${{ matrix.target }}/release/assay" "$staging/"
 
           # Create tarball
-          tar -czf "$staging.tar.gz" -C "$staging" verdict
+          tar -czf "$staging.tar.gz" -C "$staging" assay
 
           echo "ASSET=$staging.tar.gz" >> "$GITHUB_ENV"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: verdict-${{ matrix.suffix }}
+          name: assay-${{ matrix.suffix }}
           path: ${{ env.ASSET }}
           if-no-files-found: error
 

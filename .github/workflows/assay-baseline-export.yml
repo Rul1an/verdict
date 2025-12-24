@@ -6,7 +6,7 @@ on:
     branches: [ main ]
     paths:
       - "examples/ci-regression-gate/**"
-      - ".github/workflows/verdict-baseline-export.yml"
+      - ".github/workflows/assay-baseline-export.yml"
 
 jobs:
   export:
@@ -19,10 +19,10 @@ jobs:
 
       - name: Export baseline (offline/replay)
         env:
-          VERDICT_BIN: ${{ github.workspace }}/target/release/verdict
+          ASSAY_BIN: ${{ github.workspace }}/target/release/assay
         working-directory: examples/ci-regression-gate
         run: |
-          $VERDICT_BIN ci \
+          $ASSAY_BIN ci \
             --config eval.yaml \
             --trace-file traces/main.jsonl \
             --export-baseline baseline.json

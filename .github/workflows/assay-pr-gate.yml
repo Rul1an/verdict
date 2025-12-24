@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - "examples/ci-regression-gate/**"
-      - ".github/workflows/verdict-pr-gate.yml"
+      - ".github/workflows/assay-pr-gate.yml"
 
 jobs:
   gate:
@@ -27,10 +27,10 @@ jobs:
 
       - name: Gate PR trace against baseline (offline/replay)
         env:
-          VERDICT_BIN: ${{ github.workspace }}/target/release/verdict
+          ASSAY_BIN: ${{ github.workspace }}/target/release/assay
         working-directory: examples/ci-regression-gate
         run: |
-          $VERDICT_BIN ci \
+          $ASSAY_BIN ci \
             --config eval.yaml \
             --trace-file traces/pr_bad.jsonl \
             --baseline baseline.json
