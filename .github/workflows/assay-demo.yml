@@ -1,4 +1,4 @@
-name: Verdict Demo Gate
+name: Assay Demo Gate
 
 on:
   pull_request:

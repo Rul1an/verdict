@@ -1,4 +1,4 @@
-name: Verdict Gate + Baseline
+name: Assay Gate + Baseline
 
 on:
   pull_request:

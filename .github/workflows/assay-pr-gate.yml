@@ -1,4 +1,4 @@
-name: verdict-pr-gate
+name: assay-pr-gate
 
 on:
   pull_request:

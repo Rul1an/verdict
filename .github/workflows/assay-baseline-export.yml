@@ -1,4 +1,4 @@
-name: verdict-baseline-export
+name: assay-baseline-export
 
 on:
   workflow_dispatch:
