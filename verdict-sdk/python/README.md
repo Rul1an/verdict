@@ -6,9 +6,9 @@
 
 The fastest way to regression test your AI agent.
 
-### 1. Install
+### 1.## Installation
 ```bash
-pip install "verdict-sdk[openai]"
+pip install verdict-eval
 ```
 
 ### 2. Record (`record.py`)
