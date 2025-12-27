@@ -1,0 +1,27 @@
+# Test: Anchors and Aliases should be resolved or preserved
+configVersion: 1
+suite: anchor_test
+model: dummy
+
+definitions:
+  - &expect_weather
+    type: args_valid
+    schema:
+      type: object
+      properties:
+        city: { const: "San Francisco" }
+
+tests:
+  - id: test_1
+    input:
+      prompt: "Weather in SF?"
+    expected: *expect_weather
+
+  - id: test_2
+    input:
+      prompt: "Check weather"
+    expected:
+      type: sequence_valid
+      rules:
+        - type: require
+          tool: "get_weather"

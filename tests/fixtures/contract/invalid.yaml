@@ -1,0 +1,9 @@
+version: 1
+suite: contract-invalid
+model: dummy
+policies: # Invalid field for v1
+  - "some/path.yaml"
+tests:
+  - id: t1
+    input: { prompt: "hi" }
+    expected: { type: must_contain, must_contain: ["hello"] }
