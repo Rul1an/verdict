@@ -39,7 +39,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p reports
-          assay run \
+          assay ci \
             --config tests/fixtures/contract/pass.yaml \
             --trace-file reports/trace.jsonl \
             --strict \
