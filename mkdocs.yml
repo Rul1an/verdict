@@ -17,8 +17,8 @@ theme:
   name: material
   custom_dir: docs/overrides
   logo: assets/logo.svg
-  favicon: assets/favicon.png
-  
+  favicon: assets/logo.svg
+
   palette:
     # Light mode
     - media: "(prefers-color-scheme: light)"
@@ -117,11 +117,11 @@ extra:
       link: https://twitter.com/assay_dev
     - icon: fontawesome/brands/discord
       link: https://discord.gg/assay
-  
+
   analytics:
     provider: google
     property: G-XXXXXXXXXX
-  
+
   version:
     provider: mike
 
@@ -130,14 +130,14 @@ extra_css:
 
 nav:
   - Home: index.md
-  
+
   - Getting Started:
     - getting-started/index.md
     - Installation: getting-started/installation.md
     - Quick Start: getting-started/quickstart.md
     - Your First Test: getting-started/first-test.md
     - CI Integration: getting-started/ci-integration.md
-  
+
   - Core Concepts:
     - concepts/index.md
     - Traces: concepts/traces.md
@@ -145,21 +145,21 @@ nav:
     - Metrics: concepts/metrics.md
     - Replay Engine: concepts/replay.md
     - Cache & Fingerprints: concepts/cache.md
-  
+
   - MCP Integration:
     - mcp/index.md
     - Quick Start: mcp/quickstart.md
     - Import Formats: mcp/import-formats.md
     - Assay MCP Server: mcp/server.md
     - Self-Correcting Agents: mcp/self-correction.md
-  
+
   - Configuration:
     - config/index.md
     - mcp-eval.yaml: config/eval-yaml.md
     - Policy Files: config/policies.md
     - Sequence Rules DSL: config/sequences.md
     - Migration Guide: config/migration.md
-  
+
   - CLI Reference:
     - cli/index.md
     - assay run: cli/run.md
@@ -167,31 +167,31 @@ nav:
     - assay migrate: cli/migrate.md
     - assay replay: cli/replay.md
     - assay mcp-server: cli/mcp-server.md
-  
+
   - Metrics Reference:
     - metrics/index.md
     - args_valid: metrics/args-valid.md
     - sequence_valid: metrics/sequence-valid.md
     - tool_blocklist: metrics/tool-blocklist.md
     - Custom Metrics: metrics/custom.md
-  
+
   - Use Cases:
     - use-cases/index.md
     - CI Regression Gate: use-cases/ci-gate.md
     - Trace-Driven Debugging: use-cases/debugging.md
     - Air-Gapped Enterprise: use-cases/air-gapped.md
     - Agent Self-Correction: use-cases/self-correction.md
-  
+
   - Architecture:
     - architecture/index.md
     - Crate Structure: architecture/crates.md
     - Data Flow: architecture/data-flow.md
     - ADRs: architecture/adrs.md
-  
+
   - Contributing:
     - contributing/index.md
     - Development Setup: contributing/setup.md
     - Adding Metrics: contributing/metrics.md
     - Release Process: contributing/releases.md
-  
+
   - Changelog: changelog.md

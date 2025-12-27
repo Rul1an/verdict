@@ -1,5 +1,7 @@
 <h1 align="center">
   <br>
+  <img src="docs/assets/logo.svg" alt="Assay Logo" width="200">
+  <br>
   Assay
   <br>
 </h1>
@@ -146,7 +148,7 @@ tests:
     tool: apply_discount
     constraints:
       percent: { max: 30 }
-  
+
   - id: read_before_write
     metric: sequence_valid
     rules:
@@ -269,7 +271,7 @@ MIT License. See [LICENSE](LICENSE).
 ## Why "Assay"?
 
 > *In metallurgy, an **assay** determines the purity of precious metals.*
-> 
+>
 > *In software, Assay determines the quality of your AI.*
 
 ---
