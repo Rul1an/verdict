@@ -1,0 +1,24 @@
+# Test: Nulls, empty lists, and missing keys
+configVersion: 1
+suite: null_test
+model: dummy
+
+tests:
+  - id: null_args
+    input:
+      prompt: "Hello"
+    expected:
+      type: args_valid
+      schema: ~
+
+  - id: empty_rules
+    input:
+      prompt: "Hello"
+    expected:
+      type: sequence_valid
+      rules: []
+
+  - id: missing_expected
+    # expected is missing (defaults to must_contain [])
+    input:
+      prompt: "Hello"

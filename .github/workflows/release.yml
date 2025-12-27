@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 jobs:
   build:
@@ -66,6 +68,11 @@ jobs:
           tar -czf "$staging.tar.gz" -C "$staging" assay
 
           echo "ASSET=$staging.tar.gz" >> "$GITHUB_ENV"
+
+      - name: Attest Build Provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: ${{ env.ASSET }}
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4

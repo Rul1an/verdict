@@ -70,7 +70,7 @@ pub async fn cmd_trace(args: TraceArgs, legacy_mode: bool) -> anyhow::Result<i32
             Ok(exit_codes::OK)
         }
         TraceSub::Verify { trace, config } => {
-            let cfg = assay_core::config::load_config(&config, legacy_mode)
+            let cfg = assay_core::config::load_config(&config, legacy_mode, false)
                 .map_err(|e| anyhow::anyhow!("failed to load config: {}", e))?;
 
             trace::verify::verify_coverage(&trace, &cfg)?;
@@ -83,7 +83,7 @@ pub async fn cmd_trace(args: TraceArgs, legacy_mode: bool) -> anyhow::Result<i32
             model,
             output,
         } => {
-            let cfg = assay_core::config::load_config(&config, legacy_mode)
+            let cfg = assay_core::config::load_config(&config, legacy_mode, false)
                 .map_err(|e| anyhow::anyhow!("failed to load config: {}", e))?;
 
             // Build embedder (simplified version of build_runner logic)
@@ -147,7 +147,7 @@ pub async fn cmd_trace(args: TraceArgs, legacy_mode: bool) -> anyhow::Result<i32
             judge_model,
             output,
         } => {
-            let cfg = assay_core::config::load_config(&config, legacy_mode)
+            let cfg = assay_core::config::load_config(&config, legacy_mode, false)
                 .map_err(|e| anyhow::anyhow!("failed to load config: {}", e))?;
 
             // Build judge service

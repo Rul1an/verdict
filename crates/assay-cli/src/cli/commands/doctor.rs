@@ -3,7 +3,7 @@ use assay_core::config::{load_config, path_resolver::PathResolver};
 use crate::cli::args::DoctorArgs;
 
 pub async fn run(args: DoctorArgs, legacy_mode: bool) -> anyhow::Result<i32> {
-    let cfg = load_config(&args.config, legacy_mode)
+    let cfg = load_config(&args.config, legacy_mode, false)
         .map_err(|e| anyhow::anyhow!("config error: {}", e))?;
     let resolver = PathResolver::new(&args.config);
 

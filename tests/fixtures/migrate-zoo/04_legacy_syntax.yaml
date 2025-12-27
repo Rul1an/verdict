@@ -1,0 +1,12 @@
+# Test: Legacy sequence syntax (list of strings instead of list of objects)
+configVersion: 1
+suite: legacy_test
+model: dummy
+
+tests:
+  - id: legacy_sequence
+    input:
+       prompt: "Do things"
+    expected:
+       - must_contain: "Paris"
+       - must_not_contain: "London"

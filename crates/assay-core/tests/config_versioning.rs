@@ -17,7 +17,7 @@ tests:
 "#
     )?;
 
-    let cfg = load_config(tmp.path(), false)?;
+    let cfg = load_config(tmp.path(), false, false)?;
     assert_eq!(cfg.version, 0, "Default version should be 0 (legacy)");
     assert!(cfg.is_legacy());
     Ok(())
@@ -62,7 +62,7 @@ tests:
 "#
     )?;
 
-    let cfg = load_config(tmp.path(), false)?;
+    let cfg = load_config(tmp.path(), false, false)?;
     assert_eq!(cfg.version, 1, "Explicit version 1 should be respected");
     assert!(!cfg.is_legacy());
     Ok(())
@@ -85,7 +85,7 @@ tests:
     )?;
 
     // Legacy mode = true should force version to 0
-    let cfg = load_config(tmp.path(), true)?;
+    let cfg = load_config(tmp.path(), true, false)?;
     assert_eq!(cfg.version, 0, "Legacy mode should force version 0");
     assert!(cfg.is_legacy());
     Ok(())
@@ -107,7 +107,7 @@ tests:
 "#
     )?;
 
-    let res = load_config(tmp.path(), false);
+    let res = load_config(tmp.path(), false, false);
     assert!(res.is_err());
     let err = res.err().unwrap().to_string();
     assert!(err.contains("unsupported config version 999"));

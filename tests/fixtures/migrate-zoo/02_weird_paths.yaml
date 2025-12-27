@@ -1,0 +1,22 @@
+# Test: Weird path formats
+configVersion: 1
+suite: path_test
+model: dummy
+
+# Windows paths, relative paths, etc. (These might fail if files don't exist, but parser should read string)
+# Note: implementation usually resolves paths relative to config.
+# If these don't exist, resolve might fail?
+# We'll see.
+policies:
+  - "policies\\windows\\style.yaml"
+  - "./policies/relative/style.yaml"
+
+tests:
+  - id: path_test_1
+    input:
+      prompt: "Hello"
+    expected:
+      type: args_valid
+      # Schema file ref (if supported) or just schema object
+      schema:
+         type: object

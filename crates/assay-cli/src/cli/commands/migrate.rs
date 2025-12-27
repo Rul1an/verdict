@@ -16,9 +16,10 @@ pub fn cmd_migrate(args: MigrateArgs) -> Result<i32> {
     let content = fs::read_to_string(&config_path)
         .with_context(|| format!("failed to read config: {:?}", config_path))?;
 
-    // Parse config
-    let mut config: EvalConfig =
-        serde_yaml::from_str(&content).context("failed to parse config YAML")?;
+    // Parse config (strict mode to catch ignored fields like 'policies')
+    let mut config = assay_core::config::load_config(&config_path, false, true)
+        .context("failed to load config (strict check failed)")?;
+
     println!(
         "Loaded config version: {} (model: {}, suite: {})",
         config.version, config.model, config.suite
@@ -86,6 +87,16 @@ pub fn cmd_migrate(args: MigrateArgs) -> Result<i32> {
 
     if old_json != new_json {
         modified = true;
+    }
+
+    if args.check {
+        if modified {
+            eprintln!("Migration required for {:?}. Run 'assay migrate' to update configuration.", config_path);
+            return Ok(exit_codes::CONFIG_ERROR);
+        } else {
+            println!("Config {:?} is clean (already migrated).", config_path);
+            return Ok(exit_codes::OK);
+        }
     }
 
     if !modified {
