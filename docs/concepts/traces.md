@@ -1,0 +1,3 @@
+# Traces
+
+Core concept: Traces.
