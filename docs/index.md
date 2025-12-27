@@ -1,4 +1,10 @@
-# Assay
+<h1 align="center">
+  <br>
+  <img src="assets/logo.svg" alt="Assay Logo" width="200">
+  <br>
+  Assay
+  <br>
+</h1>
 
 <p class="subtitle">The purity test for AI — Zero-flake CI for AI agents</p>
 
@@ -175,7 +181,7 @@ assay mcp-server --port 3001 --policy policies/
 ## Why "Assay"?
 
 > *In metallurgy, an **assay** determines the purity of precious metals.*
-> 
+>
 > *In software, Assay determines the quality of your AI.*
 
 We built Assay because existing LLM evaluation tools are:
