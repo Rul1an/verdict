@@ -11,36 +11,12 @@ permissions:
   contents: read
   checks: write
 
-env:
-  # Pin dit expliciet. Niet "latest" in CI.
-  ASSAY_VERSION: v0.8.0
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
-jobs:
-  assay:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Assay (from GitHub Release)
-        shell: bash
+      - name: Build and Install Assay (from source)
         run: |
-          set -euo pipefail
-
-          # Pas asset-naam aan aan je release artifacts
-          ASSET="assay-x86_64-unknown-linux-musl.tar.gz"
-          BASE_URL="https://github.com/Rul1an/assay/releases/download/${ASSAY_VERSION}"
-
-          curl -fsSL -o "${ASSET}" "${BASE_URL}/${ASSET}"
-          # curl -fsSL -o "SHA256SUMS" "${BASE_URL}/SHA256SUMS"
-
-          # Verify checksum (vereist dat je release pipeline SHA256SUMS publiceert - TODO enable when releases are pushed)
-          # grep " ${ASSET}$" SHA256SUMS | sha256sum -c -
-
-          tar -xzf "${ASSET}"
-          sudo install -m 0755 assay /usr/local/bin/assay
-
+          cargo install --path crates/assay-cli --debug
           assay --version
 
       - name: Migrate config (check-only, strict)
