@@ -32,7 +32,7 @@ jobs:
         run: |
           set -euo pipefail
           # Verwacht: exit 0 als config ok is; exit 2 bij config error/legacy/unknown fields.
-          assay migrate --check --config mcp-eval.yaml
+          assay migrate --check --config tests/fixtures/contract/pass.yaml
 
       - name: Run Assay suite (strict + JUnit)
         shell: bash
@@ -40,8 +40,8 @@ jobs:
           set -euo pipefail
           mkdir -p reports
           assay run \
-            --config mcp-eval.yaml \
-            --trace-file goldens.jsonl \
+            --config tests/fixtures/contract/pass.yaml \
+            --trace-file reports/trace.jsonl \
             --strict \
             --junit reports/assay-junit.xml
 
