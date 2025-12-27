@@ -1,0 +1,7 @@
+version: 1
+suite: contract-pass
+model: dummy
+tests:
+  - id: t1
+    input: { prompt: "hi" }
+    expected: { type: must_contain, must_contain: ["passed"] }

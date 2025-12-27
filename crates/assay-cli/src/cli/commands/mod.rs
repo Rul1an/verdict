@@ -112,7 +112,7 @@ async fn cmd_run(args: RunArgs, legacy_mode: bool) -> anyhow::Result<i32> {
         return Ok(exit_codes::CONFIG_ERROR);
     }
 
-    let cfg = assay_core::config::load_config(&args.config, legacy_mode)
+    let cfg = assay_core::config::load_config(&args.config, legacy_mode, false)
         .map_err(|e| anyhow::anyhow!(e))?;
 
     // Check for deprecated legacy usage
@@ -203,7 +203,7 @@ async fn cmd_ci(args: CiArgs, legacy_mode: bool) -> anyhow::Result<i32> {
         }
     }
 
-    let cfg = assay_core::config::load_config(&args.config, legacy_mode)
+    let cfg = assay_core::config::load_config(&args.config, legacy_mode, false)
         .map_err(|e| anyhow::anyhow!(e))?;
     // Observability: Log config version
     if cfg.version > 0 {

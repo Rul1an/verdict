@@ -7,7 +7,7 @@ use crate::cli::args::ValidateArgs;
 
 pub async fn run(args: ValidateArgs, legacy_mode: bool) -> anyhow::Result<i32> {
     // 1. Load Config
-    let cfg = match load_config(&args.config, legacy_mode) {
+    let cfg = match load_config(&args.config, legacy_mode, true) {
         Ok(c) => c,
         Err(e) => {
             // If config fails to load, that's an E_CFG_PARSE or similar.

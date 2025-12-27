@@ -33,7 +33,7 @@ tests:
     )?;
 
     // 1. Load Legacy
-    let legacy = load_config(&config_path, true)?;
+    let legacy = load_config(&config_path, true, false)?;
     assert!(legacy.is_legacy());
     assert_eq!(
         legacy.tests[0].expected.get_policy_path(),
@@ -87,7 +87,7 @@ tests:
 "#,
     )?;
 
-    let legacy = load_config(&config_path, true)?;
+    let legacy = load_config(&config_path, true, false)?;
     let migrated = resolve_policies(legacy, dir.path())?;
 
     assert_eq!(migrated.tests[0].expected.get_policy_path(), None);
@@ -132,7 +132,7 @@ tests:
     )?;
 
     // Note: resolve_policies attempts to parse as Vec<String> first, fails, then Vec<SequenceRule>.
-    let legacy = load_config(&config_path, true)?;
+    let legacy = load_config(&config_path, true, false)?;
     let migrated = resolve_policies(legacy, dir.path())?;
 
     assert_eq!(migrated.tests[0].expected.get_policy_path(), None);

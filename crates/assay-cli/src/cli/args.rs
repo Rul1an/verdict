@@ -462,4 +462,8 @@ pub struct MigrateArgs {
     /// Dry run (print to stdout instead of overwriting)
     #[arg(long)]
     pub dry_run: bool,
+
+    /// Check if migration is needed (exit 2 if needed, 0 if clean)
+    #[arg(long)]
+    pub check: bool,
 }

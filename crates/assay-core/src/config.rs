@@ -7,11 +7,52 @@ pub mod resolve;
 
 pub const SUPPORTED_CONFIG_VERSION: u32 = 1;
 
-pub fn load_config(path: &Path, legacy_mode: bool) -> Result<EvalConfig, ConfigError> {
+pub fn load_config(path: &Path, legacy_mode: bool, strict: bool) -> Result<EvalConfig, ConfigError> {
     let raw = std::fs::read_to_string(path)
         .map_err(|e| ConfigError(format!("failed to read config {}: {}", path.display(), e)))?;
-    let mut cfg: EvalConfig = serde_yaml::from_str(&raw)
-        .map_err(|e| ConfigError(format!("failed to parse YAML: {}", e)))?;
+
+    let mut ignored_keys = std::collections::HashSet::new();
+    let deserializer = serde_yaml::Deserializer::from_str(&raw);
+
+    // serde_ignored wrapper to capture unknown fields
+    let mut cfg: EvalConfig = serde_ignored::deserialize(deserializer, |path| {
+        ignored_keys.insert(path.to_string());
+    })
+    .map_err(|e| ConfigError(format!("failed to parse YAML: {}", e)))?;
+
+    // Check strictness / significant unknown fields
+    if strict && !ignored_keys.is_empty() {
+        // Whitelist common YAML anchor keys
+        let meaningful_unknowns: Vec<_> = ignored_keys
+            .iter()
+            .filter(|k| *k != "definitions" && !k.starts_with("_") && !k.starts_with("x-"))
+            .collect();
+
+        if meaningful_unknowns.is_empty() {
+            // All unknowns are whitelisted (e.g. anchors). PASS.
+        } else {
+            // Special helpful error for v0 'policies'
+            if ignored_keys.contains("policies") {
+                return Err(ConfigError(format!(
+                    "Top-level 'policies' is not valid in configVersion: {}. Did you mean to run assay migrate on a v0 config, or remove legacy keys? (file: {})",
+                    cfg.version,
+                    path.display()
+                )));
+            }
+
+            // Generic strict error
+            return Err(ConfigError(format!(
+                "Unknown fields detected in strict mode: {:?} (file: {})",
+                meaningful_unknowns,
+                path.display()
+            )));
+        }
+    } else if !ignored_keys.is_empty() {
+         // In non-strict mode, we ideally WARN, but standard logging might not be initialized here.
+         // For now, we proceed as 'careful ignore' but validated at least.
+         // The user specifically asked for migrate FAIL (strict=true) and run WARN.
+         eprintln!("WARN: Ignored unknown config fields: {:?}", ignored_keys);
+    }
 
     // Legacy override
     if legacy_mode {

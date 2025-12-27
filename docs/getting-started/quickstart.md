@@ -129,9 +129,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Rul1an/assay-action@v1
-        with:
-          config: mcp-eval.yaml
+
+      # 1. Install Assay (pinned version + checksum verify is best practice)
+      - name: Install Assay
+        run: |
+          ASSET="assay-x86_64-unknown-linux-musl.tar.gz"
+          curl -fsSL -o "$ASSET" "https://github.com/Rul1an/assay/releases/download/v0.9.0/$ASSET"
+          tar -xzf "$ASSET"
+          sudo install assay /usr/local/bin/
+
+      # 2. Safety Check (Ensure config is v1 and clean)
+      - name: Check Migration
+        run: assay migrate --check --config mcp-eval.yaml
+
+      # 3. Run Tests (Strict mode for CI)
+      - name: Run Assay
+        run: assay run --config mcp-eval.yaml --strict --junit report.xml
 ```
 
 Every PR now gets instant, deterministic validation.

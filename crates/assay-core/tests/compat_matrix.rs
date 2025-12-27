@@ -24,7 +24,7 @@ tests:
 "#
     )?;
 
-    let cfg = load_config(tmp.path(), false)?;
+    let cfg = load_config(tmp.path(), false, false)?;
     assert_eq!(cfg.settings.timeout_seconds, Some(60));
     Ok(())
 }
@@ -49,7 +49,7 @@ tests:
 "#
     )?;
 
-    let cfg = load_config(tmp.path(), false)?;
+    let cfg = load_config(tmp.path(), false, false)?;
     assert_eq!(cfg.suite, "unknown_fields");
     // Should pass without error
     Ok(())
@@ -74,7 +74,7 @@ tests:
 "#
     )?;
 
-    let cfg = load_config(tmp.path(), false)?;
+    let cfg = load_config(tmp.path(), false, false)?;
     // Use pattern match to verifying parsing
     if let assay_core::model::Expected::SequenceValid { sequence, .. } = &cfg.tests[0].expected {
         let seq = sequence.as_ref().unwrap();
@@ -128,7 +128,7 @@ tests:
     // Let's check `crates/assay-metrics/src/args_valid.rs`.
 
     // BUT `load_config` should succeed parsing.
-    let cfg = load_config(&config_path, false)?;
+    let cfg = load_config(&config_path, false, false)?;
     assert_eq!(cfg.tests.len(), 2);
     Ok(())
 }
