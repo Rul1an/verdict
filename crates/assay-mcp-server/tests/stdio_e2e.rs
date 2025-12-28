@@ -8,14 +8,14 @@ fn test_stdio_flow() {
 
     // Ensure binary is built
     let status = Command::new("cargo")
-        .args(&["build", "-p", "assay-mcp-server"])
+        .args(["build", "-p", "assay-mcp-server"])
         .status()
         .expect("Failed to build server");
     assert!(status.success());
 
     // Spawn server
     let mut child = Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "-q",
             "-p",

@@ -2,7 +2,6 @@ use anyhow::Result;
 use serde_json::Value;
 use std::io::{BufRead, Write};
 use std::process::{Command, Stdio};
-use std::time::Duration;
 
 // Helper to spawn server with env vars
 fn spawn_server_with_env(env: Vec<(&str, &str)>) -> Result<std::process::Child> {
@@ -54,7 +53,8 @@ fn test_transport_limit_exceeded() -> Result<()> {
 
     let result = resp.get("result").unwrap();
     let allowed = result.get("allowed").unwrap().as_bool().unwrap();
-    assert_eq!(allowed, false);
+    // unused import removed
+    assert!(!allowed);
 
     let err = result.get("error").unwrap();
     assert_eq!(

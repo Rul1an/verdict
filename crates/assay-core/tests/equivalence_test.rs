@@ -1,6 +1,5 @@
 use assay_core::config::{load_config, resolve::resolve_policies};
 use assay_core::model::Expected;
-use std::io::Write;
 use tempfile::tempdir;
 
 #[test]
@@ -131,7 +130,6 @@ tests:
 "#,
     )?;
 
-    // Note: resolve_policies attempts to parse as Vec<String> first, fails, then Vec<SequenceRule>.
     let legacy = load_config(&config_path, true, false)?;
     let migrated = resolve_policies(legacy, dir.path())?;
 

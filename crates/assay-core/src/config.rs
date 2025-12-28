@@ -7,7 +7,11 @@ pub mod resolve;
 
 pub const SUPPORTED_CONFIG_VERSION: u32 = 1;
 
-pub fn load_config(path: &Path, legacy_mode: bool, strict: bool) -> Result<EvalConfig, ConfigError> {
+pub fn load_config(
+    path: &Path,
+    legacy_mode: bool,
+    strict: bool,
+) -> Result<EvalConfig, ConfigError> {
     let raw = std::fs::read_to_string(path)
         .map_err(|e| ConfigError(format!("failed to read config {}: {}", path.display(), e)))?;
 
@@ -48,10 +52,10 @@ pub fn load_config(path: &Path, legacy_mode: bool, strict: bool) -> Result<EvalC
             )));
         }
     } else if !ignored_keys.is_empty() {
-         // In non-strict mode, we ideally WARN, but standard logging might not be initialized here.
-         // For now, we proceed as 'careful ignore' but validated at least.
-         // The user specifically asked for migrate FAIL (strict=true) and run WARN.
-         eprintln!("WARN: Ignored unknown config fields: {:?}", ignored_keys);
+        // In non-strict mode, we ideally WARN, but standard logging might not be initialized here.
+        // For now, we proceed as 'careful ignore' but validated at least.
+        // The user specifically asked for migrate FAIL (strict=true) and run WARN.
+        eprintln!("WARN: Ignored unknown config fields: {:?}", ignored_keys);
     }
 
     // Legacy override

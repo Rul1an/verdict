@@ -1,8 +1,14 @@
 version: 1
 suite: example
 model: gpt-4
-policies:
-  function_calling_gate:
+
+tests:
+  - id: fc-trace-01
+    input:
+      prompt: "Search for weather in Amsterdam and multiply temperature by 2"
+    expected:
+      type: must_contain
+      must_contain: ["40 degrees"]
     assertions:
       # Must call 'web_search' at least once
       - type: trace_must_call_tool
@@ -15,12 +21,3 @@ policies:
           - web_search
           - calculator
         mode: exact
-
-tests:
-  - id: fc-trace-01
-    policy: function_calling_gate
-    input:
-      prompt: "Search for weather in Amsterdam and multiply temperature by 2"
-    expected:
-      type: must_contain
-      must_contain: ["40 degrees"]

@@ -2,8 +2,14 @@ version: 1
 suite: demo-agent-suite
 model: gpt-4o-mini
 
-policies:
-  demo_policy:
+
+tests:
+  - id: demo-test-01
+    input:
+      prompt: "What's the weather in Paris?"
+    expected:
+      type: must_contain
+      must_contain: ["sunny"]
     assertions:
       # 1. We expect the agent to check the weather
       - type: trace_must_call_tool
@@ -20,12 +26,3 @@ policies:
         tool_name: get_weather
         argument: location
         regex: "(?i)Paris"
-
-tests:
-  - id: demo-test-01
-    policy: demo_policy
-    input:
-      prompt: "What's the weather in Paris?"
-    expected:
-      type: must_contain
-      must_contain: ["sunny"]

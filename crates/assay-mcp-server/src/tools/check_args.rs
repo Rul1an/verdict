@@ -144,7 +144,6 @@ mod tests {
     use super::*;
     use crate::cache::PolicyCaches;
     use crate::config::ServerConfig;
-    use std::path::PathBuf;
 
     #[tokio::test]
     async fn test_cache_hit_behavior() {

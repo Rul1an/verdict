@@ -9,7 +9,7 @@ fn spawn_server() -> (
 ) {
     let policy_root = "../../tests/fixtures/mcp";
     let mut child = Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "-q",
             "-p",
@@ -26,7 +26,7 @@ fn spawn_server() -> (
 
     let stdin = child.stdin.take().expect("Failed to open stdin");
     let stdout = child.stdout.take().expect("Failed to open stdout");
-    return (child, stdin, BufReader::new(stdout));
+    (child, stdin, BufReader::new(stdout))
 }
 
 fn spawn_server_with_env(
@@ -39,7 +39,7 @@ fn spawn_server_with_env(
 ) {
     let policy_root = "../../tests/fixtures/mcp";
     let mut child = Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "-q",
             "-p",
@@ -57,7 +57,7 @@ fn spawn_server_with_env(
 
     let stdin = child.stdin.take().expect("Failed to open stdin");
     let stdout = child.stdout.take().expect("Failed to open stdout");
-    return (child, stdin, BufReader::new(stdout));
+    (child, stdin, BufReader::new(stdout))
 }
 
 fn send_req(

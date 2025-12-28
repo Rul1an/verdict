@@ -32,7 +32,6 @@ pub async fn run(args: ValidateArgs, legacy_mode: bool) -> anyhow::Result<i32> {
     let resolver = PathResolver::new(&args.config);
 
     // 2. Prepare Options
-    // Note: CLI args override config if user passes them explicitly?
     // In validate command, we usually validte what IS passed.
     let opts = ValidateOptions {
         trace_file: args.trace_file,

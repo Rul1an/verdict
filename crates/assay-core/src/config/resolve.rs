@@ -61,7 +61,6 @@ pub fn resolve_policies(mut config: EvalConfig, base_dir: &Path) -> Result<EvalC
                             schema: v.get("schema").cloned(),
                         };
                     } else if v.get("sequence").is_some() {
-                        // TODO: parse sequence
                         test.expected = Expected::SequenceValid {
                             policy: None,
                             sequence: serde_json::from_value(v.get("sequence").unwrap().clone())

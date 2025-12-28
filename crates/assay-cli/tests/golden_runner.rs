@@ -10,7 +10,7 @@ fn test_golden_harness() {
     // Better to use the binary if available. But cargo run is easiest for dev/CI.
 
     let output = Command::new("cargo")
-        .args(&[
+        .args([
             "run",
             "--quiet",
             "--bin",

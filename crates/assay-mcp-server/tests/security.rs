@@ -7,7 +7,7 @@ use tokio::process::Command;
 async fn test_path_traversal_prevention() -> Result<()> {
     // 1. Setup Server
     let status = Command::new("cargo")
-        .args(&["build", "-p", "assay-mcp-server"])
+        .args(["build", "-p", "assay-mcp-server"])
         .status()
         .await?;
     assert!(status.success());

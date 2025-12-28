@@ -1,7 +1,6 @@
 use super::exit_codes;
 use crate::cli::args::MigrateArgs;
 use anyhow::{Context, Result};
-use assay_core::model::EvalConfig;
 use std::fs;
 
 pub fn cmd_migrate(args: MigrateArgs) -> Result<i32> {
@@ -91,7 +90,10 @@ pub fn cmd_migrate(args: MigrateArgs) -> Result<i32> {
 
     if args.check {
         if modified {
-            eprintln!("Migration required for {:?}. Run 'assay migrate' to update configuration.", config_path);
+            eprintln!(
+                "Migration required for {:?}. Run 'assay migrate' to update configuration.",
+                config_path
+            );
             return Ok(exit_codes::CONFIG_ERROR);
         } else {
             println!("Config {:?} is clean (already migrated).", config_path);
@@ -142,8 +144,6 @@ pub fn cmd_migrate(args: MigrateArgs) -> Result<i32> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
-    use tempfile::NamedTempFile;
 
     #[test]
     fn test_migrate_logic() -> Result<()> {
@@ -176,7 +176,9 @@ tests:
 "#,
         )?;
 
+        // unused imports removed
         let args = MigrateArgs {
+            check: false,
             config: config_path.clone(),
             dry_run: false,
         };

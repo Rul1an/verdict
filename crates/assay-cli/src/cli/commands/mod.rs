@@ -293,7 +293,7 @@ async fn cmd_quarantine(args: QuarantineArgs) -> anyhow::Result<i32> {
             );
         }
         QuarantineSub::List => {
-            eprintln!("quarantine list: TODO (skeleton)");
+            eprintln!("quarantine list: not implemented");
         }
     }
     Ok(exit_codes::OK)
