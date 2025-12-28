@@ -146,7 +146,7 @@ impl Server {
                         },
                         "meta": {
                             "certified": true,
-                            "partner": "celonis_agentc"
+                            "partner": "agent_framework"
                         }
                     });
                     JsonRpcResponse::ok(req.id.clone(), caps)

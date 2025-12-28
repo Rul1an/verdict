@@ -1,4 +1,4 @@
-//! Usage telemetry for metered billing integration (e.g., Celonis).
+//! Usage telemetry for metered billing integration.
 //!
 //! This module provides standardized logging for usage events.
 //! These logs are ingested by platform observability stacks to calculate billing.

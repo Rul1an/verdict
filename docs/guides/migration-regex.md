@@ -42,7 +42,7 @@ However, this safety comes with a trade-off: **Look-around features are limited.
 *   *Alternatively in v1.0:* Use multiple simple regexes: `[0-9]` must match.
 
 ### 3. Look-behind Workarounds
-Parloa engineers encountered issues migrated German IBAN patterns relying on `(?<=...)`.
+Users encountering issues migrating patterns relying on `(?<=...)`:
 
 **Legacy:** Match digits preceded by "DE".
 ```regex

@@ -1,6 +1,6 @@
 # The Lighthouse Pattern: Enterprise Pilot Architecture
 
-This guide documents the reference architecture for the "Lighthouse Pilot" configuration, designed for high-stakes enterprise deployments (e.g., Autonomous Accounts Payable).
+This guide documents the reference architecture for the "Lighthouse Pilot" configuration, designed for high-stakes enterprise deployments.
 
 ## 1. Architecture Overview
 
@@ -8,7 +8,7 @@ The Lighthouse Pattern positions Assay as an authoritative but non-blocking "Dec
 
 ```mermaid
 graph TD
-    User((Finance Manager)) -->|Approves Task| Agent[Celonis AgentC]
+    User((Finance Manager)) -->|Approves Task| Agent[AI Agent]
 
     subgraph "Trust Layer (Invisible to User)"
         Agent -->|1. Tool Call (Approve Invoice)| Assay{Assay Guardrail}
