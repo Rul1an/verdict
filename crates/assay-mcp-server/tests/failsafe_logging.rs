@@ -1,7 +1,7 @@
 use assay_core::on_error::log_fail_safe;
 use std::sync::{Arc, Mutex};
 use tracing::Subscriber;
-use tracing_subscriber::fmt::format::JsonFields;
+
 use tracing_subscriber::fmt::MakeWriter;
 
 #[test]
