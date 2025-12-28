@@ -2,7 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
-## [v1.0.0-rc.1] - 2025-12-27
+
+## [v1.0.0-rc.2] - 2025-12-28
+
+### 🚀 Release Candidate 2
+Rapid-response release addressing critical Design Partner feedback regarding MCP protocol compliance and operational visibility.
+
+### ✨ Features
+- **Structured Fail-Safe Logging**: Introduced `assay.failsafe.triggered` JSON event when `on_error: allow` is active, enabling machine-readable audit trails.
+- **Fail-Safe UX**: Logging now occurs via standard `stderr` to avoid polluting piping outputs.
+
+### 🐛 Fixes
+- **MCP Compliance**: `assay-mcp-server` tool results are now wrapped in standard `CallToolResult` structure (`{ content: [...], isError: bool }`), enabling clients to parse error details and agents to self-correct.
+
 
 ### 🚀 Release Candidate 1
 First Release Candidate for Assay v1.0.0, introducing the "One Engine, Two Modes" guarantee and unified policy enforcement.
