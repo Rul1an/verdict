@@ -6,7 +6,7 @@ pub fn write_sarif(tool_name: &str, results: &[TestResultRow], out: &Path) -> an
         .iter()
         .filter_map(|r| {
             let level = match r.status {
-                TestStatus::Pass | TestStatus::Skipped => return None,
+                TestStatus::Pass | TestStatus::Skipped | TestStatus::AllowedOnError => return None,
                 TestStatus::Warn | TestStatus::Flaky | TestStatus::Unstable => "warning",
                 TestStatus::Fail | TestStatus::Error => "error",
             };

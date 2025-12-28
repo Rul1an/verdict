@@ -12,6 +12,7 @@ edition = "2021"
 license = "MIT"
 repository = "https://github.com/Rul1an/assay"
 authors = ["Assay"]
+readme = "README.md"
 
 [patch.crates-io]
 assay-core = { path = "crates/assay-core" }

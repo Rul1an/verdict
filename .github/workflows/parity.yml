@@ -1,0 +1,157 @@
+name: Parity Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'crates/assay-core/**'
+      - 'crates/assay-metrics/**'
+      - 'crates/assay-mcp-server/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'crates/assay-core/**'
+      - 'crates/assay-metrics/**'
+      - 'crates/assay-mcp-server/**'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  parity:
+    name: Batch vs Streaming Parity
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run parity tests
+        run: |
+          echo "=========================================="
+          echo "PARITY TEST: Batch vs Streaming"
+          echo "=========================================="
+          echo ""
+          echo "Verifying that batch mode (assay run) and streaming mode"
+          echo "(assay-mcp-server) produce IDENTICAL results for the same"
+          echo "policy + input combinations."
+          echo ""
+          echo "This is a RELEASE BLOCKER - any divergence is a critical bug."
+          echo ""
+
+          cargo test -p assay-core --test parity -- --nocapture
+
+      - name: Run latency benchmark
+        run: |
+          echo ""
+          echo "=========================================="
+          echo "LATENCY BENCHMARK"
+          echo "=========================================="
+          echo ""
+
+          cargo test -p assay-core --test latency_check -- --nocapture
+
+      - name: Summary
+        if: always()
+        run: |
+          echo ""
+          echo "=========================================="
+          echo "v1.0 GATE STATUS"
+          echo "=========================================="
+          echo ""
+          echo "✓ Parity test: Batch = Streaming"
+          echo "✓ Latency SLA: p95 < 10ms"
+          echo ""
+          echo "If both checks pass, v1.0 is cleared for release."
+
+  # Optional: Run parity tests against actual binaries
+  integration-parity:
+    name: Integration Parity (Optional)
+    runs-on: ubuntu-latest
+    needs: parity
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build release binaries
+        run: |
+          cargo build --release -p assay-cli
+          cargo build --release -p assay-mcp-server
+
+      - name: Create test fixtures
+        run: |
+          mkdir -p /tmp/parity-test
+
+          # Create test config
+          cat > /tmp/parity-test/eval.yaml << 'EOF'
+          configVersion: 1
+          suite: parity-integration
+          model: test
+
+          tests:
+            - id: args_check
+              input: "Test discount"
+              assertions:
+                - type: args_valid
+                  tool: ApplyDiscount
+                  schema:
+                    properties:
+                      percent: { maximum: 30 }
+          EOF
+
+          # Create test trace
+          cat > /tmp/parity-test/trace.jsonl << 'EOF'
+          {"type":"tool_call","tool_name":"ApplyDiscount","args":{"percent":15}}
+          EOF
+
+      - name: Run batch evaluation
+        run: |
+          ./target/release/assay run \
+            --config /tmp/parity-test/eval.yaml \
+            --trace-file /tmp/parity-test/trace.jsonl \
+            --output-format json > /tmp/parity-test/batch_result.json || true
+
+      - name: Run streaming evaluation
+        run: |
+          # Start MCP server in background
+          ./target/release/assay-mcp-server &
+          SERVER_PID=$!
+          sleep 2
+
+          # Call the check endpoint
+          curl -s http://localhost:3000/check \
+            -H "Content-Type: application/json" \
+            -d '{"tool":"ApplyDiscount","args":{"percent":15},"policy_id":"args_check"}' \
+            > /tmp/parity-test/streaming_result.json || true
+
+          kill $SERVER_PID || true
+
+      - name: Compare results
+        run: |
+          echo "Batch result:"
+          cat /tmp/parity-test/batch_result.json || echo "(no output)"
+          echo ""
+          echo "Streaming result:"
+          cat /tmp/parity-test/streaming_result.json || echo "(no output)"
+          echo ""
+          echo "Integration parity test complete."

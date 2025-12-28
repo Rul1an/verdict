@@ -4,6 +4,7 @@ use crate::cache::vcr::VcrCache;
 use crate::errors::try_map_error;
 use crate::metrics_api::Metric;
 use crate::model::{AttemptRow, EvalConfig, LlmResponse, TestCase, TestResultRow, TestStatus};
+use crate::on_error::{ErrorPolicy, ErrorPolicyResult};
 use crate::providers::llm::LlmClient;
 use crate::quarantine::{QuarantineMode, QuarantineService};
 use crate::report::RunArtifacts;
@@ -79,6 +80,7 @@ impl Runner {
                     fingerprint: None,
                     skip_reason: None,
                     attempts: None,
+                    error_policy_applied: None,
                 },
                 Err(e) => TestResultRow {
                     test_id: "unknown".into(),
@@ -91,6 +93,7 @@ impl Runner {
                     fingerprint: None,
                     skip_reason: None,
                     attempts: None,
+                    error_policy_applied: None,
                 },
             };
             any_fail = any_fail || matches!(row.status, TestStatus::Fail | TestStatus::Error);
@@ -114,6 +117,7 @@ impl Runner {
     ) -> anyhow::Result<TestResultRow> {
         let quarantine = QuarantineService::new(self.store.clone());
         let q_reason = quarantine.is_quarantined(&cfg.suite, &tc.id)?;
+        let error_policy = cfg.effective_error_policy(tc);
 
         let max_attempts = 1 + self.policy.rerun_failures;
         let mut attempts: Vec<AttemptRow> = Vec::new();
@@ -131,18 +135,33 @@ impl Runner {
                         e.to_string()
                     };
 
+                    let policy_result = error_policy.apply_to_error(&e);
+                    let (status, final_msg, applied_policy) = match policy_result {
+                        ErrorPolicyResult::Blocked { reason } => {
+                            (TestStatus::Error, reason, ErrorPolicy::Block)
+                        }
+                        ErrorPolicyResult::Allowed { warning } => {
+                            crate::on_error::log_fail_safe(&warning, None);
+                            (TestStatus::AllowedOnError, warning, ErrorPolicy::Allow)
+                        }
+                    };
+
                     (
                         TestResultRow {
                             test_id: tc.id.clone(),
-                            status: TestStatus::Error,
+                            status,
                             score: None,
                             cached: false,
-                            message: msg,
-                            details: serde_json::json!({ "error": true }),
+                            message: final_msg,
+                            details: serde_json::json!({
+                                "error": msg,
+                                "policy_applied": applied_policy
+                            }),
                             duration_ms: None,
                             fingerprint: None,
                             skip_reason: None,
                             attempts: None,
+                            error_policy_applied: Some(applied_policy),
                         },
                         LlmResponse {
                             text: "".into(),
@@ -165,7 +184,7 @@ impl Runner {
             last_output = Some(output.clone());
 
             match row.status {
-                TestStatus::Pass | TestStatus::Warn => break,
+                TestStatus::Pass | TestStatus::Warn | TestStatus::AllowedOnError => break,
                 TestStatus::Skipped => break, // Should not happen in loop
                 TestStatus::Fail | TestStatus::Error | TestStatus::Flaky | TestStatus::Unstable => {
                     continue
@@ -185,6 +204,7 @@ impl Runner {
             fingerprint: None,
             skip_reason: None,
             attempts: None,
+            error_policy_applied: None,
         });
 
         // quarantine overlay
@@ -344,6 +364,7 @@ impl Runner {
                     fingerprint: Some(fp.hex.clone()),
                     skip_reason: Some("fingerprint_match".into()),
                     attempts: None,
+                    error_policy_applied: None,
                 };
 
                 // Construct placeholder response for pipeline consistency
@@ -442,6 +463,7 @@ impl Runner {
             fingerprint: Some(fp.hex),
             skip_reason: None,
             attempts: None,
+            error_policy_applied: None,
         };
 
         if self.client.provider_name() == "trace" {

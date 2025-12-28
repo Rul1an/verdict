@@ -1,147 +1,87 @@
-# Metrics Reference
+# Assertion Types (V1)
 
-Complete documentation for Assay's built-in metrics.
+In Assay v0.9.0+, behavioral checks are defined using **inline assertions** on the test case, rather than separate policy files.
 
----
-
-## Overview
-
-Metrics are validation functions that check agent behavior. All Assay metrics are:
-
-- **Deterministic** — Same input → same output, always
-- **Fast** — Milliseconds, not seconds
-- **Binary** — Pass or fail, no floats
+These assertions map to underlying metrics but provide a cleaner, schema-validated syntax.
 
 ---
 
-## Built-in Metrics
+## Tool Assertions
 
-| Metric | Purpose | Output |
-|--------|---------|--------|
-| [`args_valid`](args-valid.md) | Validate tool arguments | Pass/Fail per call |
-| [`sequence_valid`](sequence-valid.md) | Validate call order | Pass/Fail per rule |
-| [`tool_blocklist`](tool-blocklist.md) | Block forbidden tools | Pass/Fail (count) |
-
----
-
-## Quick Examples
-
-### args_valid
+### `trace_must_call_tool`
+Passes if the trace contains at least one successful call to the specified tool.
 
 ```yaml
-tests:
-  - id: check_args
-    metric: args_valid
-    policy: policies/customer.yaml
+type: trace_must_call_tool
+tool_name: "get_weather"
 ```
 
-Validates that all tool arguments match the policy schema.
-
-### sequence_valid
+### `trace_no_tool_call`
+Passes if the trace contains **zero** calls to the specified tool. Replaces the legacy `tool_blocklist` policy.
 
 ```yaml
-tests:
-  - id: auth_flow
-    metric: sequence_valid
-    rules:
-      - type: before
-        first: authenticate
-        then: get_data
+type: trace_no_tool_call
+tool_name: "delete_database"
 ```
 
-Validates that tools are called in the correct order.
-
-### tool_blocklist
+### `trace_tool_args_match`
+Passes if **every** call to the specified tool matches the provided argument values.
 
 ```yaml
-tests:
-  - id: no_admin
-    metric: tool_blocklist
-    blocklist:
-      - admin_*
-      - delete_*
+type: trace_tool_args_match
+tool_name: "apply_discount"
+args:
+  percent: 10
+  code: "SUMMER"
 ```
 
-Validates that forbidden tools were never called.
-
----
-
-## Combining Metrics
-
-A typical test suite uses all three:
+### `trace_tool_args_schema`
+Passes if **every** call to the tool matches the provided JSON Schema.
 
 ```yaml
-version: "1"
-suite: production-agent
+type: trace_tool_args_schema
+tool_name: "search"
+schema:
+  required: ["query"]
+  properties:
+    query: { type: "string", minLength: 3 }
+```
 
-tests:
-  # Validate arguments
-  - id: args
-    metric: args_valid
-    policy: policies/all.yaml
+### `trace_tool_call_count`
+Passes if the tool call count is within the specified range.
 
-  # Validate sequences
-  - id: sequences
-    metric: sequence_valid
-    rules:
-      - type: require
-        tool: authenticate
-      - type: before
-        first: authenticate
-        then: [read_data, write_data]
+```yaml
+type: trace_tool_call_count
+tool_name: "retry"
+min: 1
+max: 3
+```
 
-  # Block dangerous tools
-  - id: blocklist
-    metric: tool_blocklist
-    blocklist: [delete_*, admin_*, debug_*]
+### `trace_no_tool_errors`
+Passes only if the trace contains zero tool execution errors (e.g., exceptions raised by the tool).
+
+```yaml
+type: trace_no_tool_errors
 ```
 
 ---
 
-## Metric Output
+## Sequence Assertions
 
-All metrics produce structured results:
+### `trace_tool_sequence`
+Enforces a strict order of tool calls. Other tools can be called in between, but the specified sequence must appear in that relative order.
 
-```json
-{
-  "id": "args_valid",
-  "status": "fail",
-  "violations": [
-    {
-      "tool": "apply_discount",
-      "call_index": 15,
-      "field": "percent",
-      "value": 50,
-      "constraint": "max: 30",
-      "message": "Value exceeds maximum"
-    }
-  ],
-  "duration_ms": 2
-}
+```yaml
+type: trace_tool_sequence
+sequence: ["login", "view_balance", "logout"]
 ```
 
 ---
 
-## Why Deterministic?
+## Comparison Table
 
-| Aspect | LLM-as-Judge | Assay Metrics |
-|--------|--------------|---------------|
-| Consistency | ~85-95% | **100%** |
-| Speed | 2-30 seconds | **1-5 ms** |
-| Cost | $0.01-$0.10 | **$0.00** |
-| Debugging | "Why did it fail?" | Exact violation |
-| CI suitability | Poor (flaky) | **Excellent** |
-
----
-
-## Custom Metrics
-
-See [Custom Metrics](custom.md) for extending Assay with your own validation logic.
-
----
-
-## See Also
-
-- [Metrics Concept](../concepts/metrics.md)
-- [Policies](../config/policies.md)
-- [Sequence Rules](../config/sequences.md)
+| V1 Assertion | Legacy V0 Policy |
+|---|---|
+| `trace_tool_args_match` | `args_valid` metric |
+| `trace_tool_sequence` | `sequence_valid` metric |
+| `trace_no_tool_call` | `tool_blocklist` metric |

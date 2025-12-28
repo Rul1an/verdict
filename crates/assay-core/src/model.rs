@@ -1,3 +1,4 @@
+use crate::on_error::ErrorPolicy;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,6 +35,12 @@ impl EvalConfig {
         }
         Ok(())
     }
+
+    /// Get the effective error policy for a test.
+    /// Test-level on_error overrides suite-level settings.
+    pub fn effective_error_policy(&self, test: &TestCase) -> ErrorPolicy {
+        test.on_error.unwrap_or(self.settings.on_error)
+    }
 }
 
 fn is_default_thresholds(t: &crate::thresholds::ThresholdConfig) -> bool {
@@ -54,6 +61,19 @@ pub struct Settings {
     pub judge: Option<JudgeConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub thresholding: Option<ThresholdingSettings>,
+
+    /// Global error handling policy (default: block)
+    /// Can be overridden per-test
+    #[serde(default, skip_serializing_if = "is_default_error_policy")]
+    pub on_error: ErrorPolicy,
+
+    /// Bail on first failure (useful for CI)
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub bail_on_first_failure: bool,
+}
+
+fn is_default_error_policy(p: &ErrorPolicy) -> bool {
+    *p == ErrorPolicy::default()
 }
 
 fn is_default_settings(s: &Settings) -> bool {
@@ -74,6 +94,10 @@ pub struct TestCase {
     pub expected: Expected,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub assertions: Option<Vec<crate::agent_assertions::model::TraceAssertion>>,
+    /// Per-test error handling policy override
+    /// If None, uses settings.on_error
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_error: Option<ErrorPolicy>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -92,6 +116,8 @@ impl<'de> Deserialize<'de> for TestCase {
             #[serde(default)]
             expected: Option<serde_json::Value>,
             assertions: Option<Vec<crate::agent_assertions::model::TraceAssertion>>,
+            #[serde(default)]
+            on_error: Option<ErrorPolicy>,
             #[serde(default)]
             tags: Vec<String>,
             metadata: Option<serde_json::Value>,
@@ -190,6 +216,7 @@ impl<'de> Deserialize<'de> for TestCase {
             } else {
                 Some(extra_assertions)
             },
+            on_error: raw.on_error,
             tags: raw.tags,
             metadata: raw.metadata,
         })
@@ -406,6 +433,8 @@ pub enum TestStatus {
     Error,
     Skipped,
     Unstable,
+    /// New: Action was allowed despite error (fail-open mode)
+    AllowedOnError,
 }
 
 impl TestStatus {
@@ -418,8 +447,22 @@ impl TestStatus {
             "error" => TestStatus::Error,
             "skipped" => TestStatus::Skipped,
             "unstable" => TestStatus::Unstable,
-            _ => TestStatus::Error, // Default fallback
+            "allowed_on_error" => TestStatus::AllowedOnError,
+            _ => TestStatus::Error,
         }
+    }
+
+    /// Returns true if this status should be treated as passing for CI purposes
+    pub fn is_passing(&self) -> bool {
+        matches!(
+            self,
+            TestStatus::Pass | TestStatus::AllowedOnError | TestStatus::Warn
+        )
+    }
+
+    /// Returns true if this status should block CI
+    pub fn is_blocking(&self) -> bool {
+        matches!(self, TestStatus::Fail | TestStatus::Error)
     }
 }
 
@@ -439,6 +482,9 @@ pub struct TestResultRow {
     pub skip_reason: Option<String>,
     #[serde(default)]
     pub attempts: Option<Vec<AttemptRow>>,
+    /// Error policy that was applied (if error occurred)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error_policy_applied: Option<ErrorPolicy>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -521,6 +567,7 @@ mod tests {
                 assertions: None,
                 tags: vec![],
                 metadata: None,
+                on_error: None,
             }],
         };
         assert!(config.validate().is_err());

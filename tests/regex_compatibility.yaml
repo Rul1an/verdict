@@ -1,0 +1,28 @@
+version: 1
+suite: regex_compatibility_suite
+model: dummy
+tests:
+  - id: iban_negative_lookahead
+    input:
+      prompt: "Check IBAN"
+    assertions:
+      - type: sequence_valid
+        policy:
+          # This should fail to compile in Rust regex crate
+          regex: '^DE\d{2}\s?(?!9999)\d{4}\s?\d{4}\s?\d{4}\s?\d{2}$'
+        # We simulate a trace that WOULD trigger this if regex worked
+        test_trace_raw:
+          - tool: "submit_payment"
+            args:
+              iban: "DE..."
+
+  - id: iban_supported
+    input:
+      prompt: "Check IBAN"
+    assertions:
+      - type: sequence_valid
+        policy:
+          # This should compile fine
+          regex: '^DE\d{2}\s?[0-9]\d{3}\s?\d{4}\s?\d{4}\s?\d{2}$'
+        test_trace_raw:
+          - tool: "submit_payment"

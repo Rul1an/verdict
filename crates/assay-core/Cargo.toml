@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
+readme.workspace = true
 description = "High-performance evaluation framework for LLM agents (Core)"
 
 [dependencies]
@@ -21,6 +22,8 @@ hex = "0.4.3"
 md5 = "0.8.0"
 strsim = "0.11.1"
 serde_ignored = "0.1.14"
+jsonschema = "0.19"
+regex = "1.5"
 
 [dev-dependencies]
 tempfile = "3.23.0"

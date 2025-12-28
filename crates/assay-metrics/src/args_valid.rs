@@ -1,7 +1,6 @@
 use assay_core::metrics_api::{Metric, MetricResult};
 use assay_core::model::{Expected, LlmResponse, TestCase, ToolCallRecord};
 use async_trait::async_trait;
-use jsonschema::JSONSchema;
 use std::collections::HashMap;
 
 pub struct ArgsValidMetric;
@@ -59,33 +58,39 @@ impl Metric for ArgsValidMetric {
         let mut errors: Vec<serde_json::Value> = Vec::new();
 
         for call in tool_calls {
-            if let Some(schema_json) = schemas.get(&call.tool_name) {
-                // Compile schema
-                let compiled = JSONSchema::options().compile(schema_json).map_err(|e| {
-                    anyhow::anyhow!(
-                        "config error: schema compile failed for tool '{}': {}",
-                        call.tool_name,
-                        e
-                    )
-                })?;
+            let policy_val = serde_json::Value::Object(
+                schemas
+                    .iter()
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect(),
+            );
 
-                let validation_result = compiled.validate(&call.args);
-                if let Err(iter) = validation_result {
-                    for e in iter {
-                        errors.push(serde_json::json!({
-                            "field": e.instance_path.to_string(),
-                            "constraint": format!("{:?}", e.kind),
-                            "suggestion": e.to_string()
-                        }));
+            let verdict = assay_core::policy_engine::evaluate_tool_args(
+                &policy_val,
+                &call.tool_name,
+                &call.args,
+            );
+
+            if verdict.status == assay_core::policy_engine::VerdictStatus::Blocked {
+                // For ArgsValid, we only care about schema violations (E_ARG_SCHEMA).
+                // Missing tool (E_POLICY_MISSING_TOOL) is policy-dependent.
+                // The old code did: "if tool not in policy -> skip".
+                // policy_engine returns Blocked for missing tool.
+                // So we need to match reason_code.
+                if verdict.reason_code == "E_ARG_SCHEMA" {
+                    if let Some(violations) =
+                        verdict.details.get("violations").and_then(|v| v.as_array())
+                    {
+                        errors.extend(violations.clone());
                     }
+                } else if verdict.reason_code == "E_POLICY_MISSING_TOOL" {
+                    // Legacy behavior: ignore.
+                } else {
+                    // Other errors (e.g. compile fail)
+                    errors.push(serde_json::json!({
+                         "message": format!("Policy error for {}: {} ({})", call.tool_name, verdict.reason_code, verdict.details)
+                     }));
                 }
-            } else {
-                // If tool not in policy, do we fail?
-                // "ArgsValid" usually implies strictness. If policy acts as an allowlist for schemas.
-                // But maybe we only validate *known* tools.
-                // Let's decide: If policy is present, unlisted tools = unchecked (use ToolBlocklist for that).
-                // Or: unlisted tools = assumption of no args?
-                // Let's stick to: only validate if schema is present.
             }
         }
 

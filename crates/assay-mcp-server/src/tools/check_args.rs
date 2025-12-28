@@ -113,27 +113,24 @@ pub async fn check_args(ctx: &ToolContext, args: &Value) -> Result<Value> {
     };
 
     // 3. Validate
-    let result = schema.validate(tool_args);
-    if let Err(errors) = result {
-        let violations: Vec<Value> = errors
-            .map(|e| {
-                serde_json::json!({
-                    "path": e.instance_path.to_string(),
-                    "constraint": e.to_string(), // Simplified message
-                    "message": e.to_string()
-                })
-            })
-            .collect();
+    let verdict = assay_core::policy_engine::evaluate_schema(&schema, tool_args);
 
-        Ok(serde_json::json!({
-            "allowed": false,
-            "violations": violations,
-            "suggested_fix": null
-        }))
-    } else {
+    if verdict.status == assay_core::policy_engine::VerdictStatus::Allowed {
         Ok(serde_json::json!({
             "allowed": true,
             "violations": [],
+            "suggested_fix": null
+        }))
+    } else {
+        // verdict.details["violations"] contains the simplified violations directly
+        let violations = verdict
+            .details
+            .get("violations")
+            .unwrap_or(&serde_json::json!([]))
+            .clone();
+        Ok(serde_json::json!({
+            "allowed": false,
+            "violations": violations,
             "suggested_fix": null
         }))
     }

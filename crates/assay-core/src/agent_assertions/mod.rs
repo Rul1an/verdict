@@ -20,7 +20,33 @@ pub fn verify_assertions(
     match graph_res {
         Ok(graph) => matchers::evaluate(&graph, assertions),
         Err(e) => {
-            // FALLBACK (PR-406): If no episode found for this run_id,
+            // FALLBACK 1: Unit Test Mode (Policy Validation)
+            // If assertions have explicit `test_args`, `test_trace`, etc., we don't need a real episode.
+            // Check if ALL assertions are unit tests.
+            let is_unit_test = assertions.iter().all(|a| match a {
+                model::TraceAssertion::ArgsValid { test_args, .. } => test_args.is_some(),
+                model::TraceAssertion::SequenceValid {
+                    test_trace,
+                    test_trace_raw,
+                    ..
+                } => test_trace.is_some() || test_trace_raw.is_some(),
+                model::TraceAssertion::ToolBlocklist {
+                    test_tool_calls, ..
+                } => test_tool_calls.is_some(),
+                _ => false,
+            });
+
+            if is_unit_test {
+                // Construct dummy graph
+                let dummy = EpisodeGraph {
+                    episode_id: "unit_test_mock".into(),
+                    steps: vec![],
+                    tool_calls: vec![],
+                };
+                return matchers::evaluate(&dummy, assertions);
+            }
+
+            // FALLBACK 2 (PR-406): If no episode found for this run_id,
             // try to find the LATEST episode for this test_id regardless of run_id.
             // This supports the "Demo Flow": Record -> Ingest (Run A) -> Verify (Run B)
             if e.to_string().contains("E_TRACE_EPISODE_MISSING") {

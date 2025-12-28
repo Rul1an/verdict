@@ -6,7 +6,7 @@
   <br>
 </h1>
 
-<h4 align="center">The purity test for AI — Zero-flake CI for AI agents</h4>
+<h4 align="center">Policy enforcement for AI agents</h4>
 
 <p align="center">
 
@@ -63,12 +63,15 @@ assay run --config mcp-eval.yaml --strict
 
 ### Install
 
+**Rust** (Recommended for CLI):
 ```bash
-# Python
-pip install assay
+# Note: Crate is named 'assay-cli', binary is 'assay'
+cargo install assay-cli --locked
+```
 
-# Rust
-cargo install assay
+**Python** (SDK):
+```bash
+pip install assay-it
 ```
 
 ### Run Your First Test

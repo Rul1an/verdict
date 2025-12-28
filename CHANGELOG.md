@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+
+## [v1.0.0-rc.2] - 2025-12-28
+
+### 🚀 Release Candidate 2
+Rapid-response release addressing critical Design Partner feedback regarding MCP protocol compliance and operational visibility.
+
+### ✨ Features
+- **Structured Fail-Safe Logging**: Introduced `assay.failsafe.triggered` JSON event when `on_error: allow` is active, enabling machine-readable audit trails.
+- **Fail-Safe UX**: Logging now occurs via standard `stderr` to avoid polluting piping outputs.
+
+### 🐛 Fixes
+- **MCP Compliance**: `assay-mcp-server` tool results are now wrapped in standard `CallToolResult` structure (`{ content: [...], isError: bool }`), enabling clients to parse error details and agents to self-correct.
+
+
+### 🚀 Release Candidate 1
+First Release Candidate for Assay v1.0.0, introducing the "One Engine, Two Modes" guarantee and unified policy enforcement.
+
+### ✨ Features
+- **Unified Policy Engine**: Centralized validation logic (`assay-core::policy_engine`) shared between CLI, SDK, and MCP Server.
+- **Fail-Safe Configuration**: New `on_error: block | allow` settings for graceful degradation.
+- **Parity Test Suite**: New `tests/parity_batch_streaming.rs` ensuring identical behavior between batch and streaming modes.
+- **False Positive Suite**: `tests/fp_suite.yaml` validation for legitimate business flows.
+- **Latency Benchmarks**: confirmed core decision latency <0.1ms (p95).
+
+### 🐛 Fixes
+- Resolved schema validation discrepancies between local CLI and MCP calls.
+- Fixed `sequence_valid` assertions to support regex-based policy matching.
+
 ## [v0.9.0] - 2025-12-27
 
 ### 🚀 Hardened & Release Ready
@@ -25,3 +53,12 @@ This release marks the transition to a hardened, production-grade CLI. It introd
 ### 🐛 Fixes
 - Fixed "Silent Drop" issue where unknown YAML fields were ignored during parsing.
 - Resolved argument expansion bug in test scripts on generic shells.
+
+## [v0.8.0] - 2025-12-27
+### Added
+- Soak test hardening for legacy configs
+- Unit tests for backward compatibility
+- `EvalConfig::validate()` method
+
+### Changed
+- Prepared `configVersion: 1` logic (opt-in)

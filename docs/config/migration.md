@@ -42,6 +42,18 @@ Caused by:
 
 **Fix:** Remove the legacy fields manually or revert `configVersion` to `0` to force a re-migration.
 
+### Rollback
+
+If validation fails or migration causes issues:
+
+```bash
+# Option 1: Restore from backup (created by migrate command)
+cp mcp-eval.yaml.bak mcp-eval.yaml
+
+# Option 2: Revert Python SDK to previous stable version
+pip install assay-it==0.8.0
+```
+
 ---
 
 ## CI/CD Checks

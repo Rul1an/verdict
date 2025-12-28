@@ -22,9 +22,17 @@ pub fn print_summary(results: &[TestResultRow], explain_skip: bool) {
             .unwrap_or_else(|| "PASS".into());
 
         match r.status {
-            TestStatus::Pass => {
+            TestStatus::Pass | TestStatus::AllowedOnError => {
                 pass += 1;
-                eprintln!("✅ {:<20} {}  {}", r.test_id, score_str, duration);
+                let icon = if r.status == TestStatus::AllowedOnError {
+                    "⚡"
+                } else {
+                    "✅"
+                };
+                eprintln!("{} {:<20} {}  {}", icon, r.test_id, score_str, duration);
+                if r.status == TestStatus::AllowedOnError {
+                    eprintln!("    (Allowed by error policy: {})", r.message);
+                }
             }
             TestStatus::Skipped => {
                 skipped += 1;

@@ -33,7 +33,7 @@ fatal: ConfigError: failed to parse YAML: did not find expected node content at 
    ```yaml
    # Wrong
    type args_valid
-   
+
    # Correct
    type: args_valid
    ```
@@ -43,7 +43,7 @@ fatal: ConfigError: failed to parse YAML: did not find expected node content at 
    # Wrong (mixed tabs/spaces)
    tests:
    	- id: test1  # Tab character
-   
+
    # Correct (2 spaces)
    tests:
      - id: test1
@@ -53,7 +53,7 @@ fatal: ConfigError: failed to parse YAML: did not find expected node content at 
    ```yaml
    # Wrong
    pattern: [a-z]+
-   
+
    # Correct
    pattern: "[a-z]+"
    ```
@@ -248,6 +248,36 @@ warn: Config already has configVersion: 1, skipping migration
 ```
 
 **What it means:** The config is already in v1 format. No action needed.
+
+---
+
+## Python / SDK Issues
+
+### `pip install assay` vs `assay-it`
+
+If you ran `pip install assay`, you installed an unrelated package.
+
+**Fix:**
+```bash
+pip uninstall assay
+pip install assay-it
+```
+
+### Module Not Found
+```
+ModuleNotFoundError: No module named 'assay'
+```
+
+**Fix:** Ensure you have installed the package (it exposes the `assay` module):
+```bash
+pip install assay-it
+```
+
+### Trace Recording Empty
+If your trace file is created but has no events:
+
+1.  Ensure you call `writer.write_trace()` or use the context manager.
+2.  Check if `record_chat_completions_with_tools` actually ran.
 
 ---
 

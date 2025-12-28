@@ -145,6 +145,11 @@ nav:
     - Metrics: concepts/metrics.md
     - Replay Engine: concepts/replay.md
     - Cache & Fingerprints: concepts/cache.md
+    - Scope & Boundaries: concepts/scope.md
+    - Fail-Safe Config: concepts/fail-safe.md
+
+  - Python SDK:
+    - python-sdk/index.md
 
   - MCP Integration:
     - mcp/index.md
@@ -194,4 +199,5 @@ nav:
     - Adding Metrics: contributing/metrics.md
     - Release Process: contributing/releases.md
 
+  - Troubleshooting: TROUBLESHOOTING.md
   - Changelog: changelog.md
