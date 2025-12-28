@@ -207,7 +207,7 @@ pub mod shared {
                     // Let's return the structured details stringified
                     (
                         Outcome::Fail,
-                        format!("Schema violation: {:?}", verdict.details),
+                        format!("Schema violation: {}", verdict.details),
                     )
                 } else if verdict.reason_code == "E_POLICY_MISSING_TOOL" {
                     (Outcome::Error, "Tool not in policy".into())
