@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 ## [v1.0.0] - 2025-12-29
 ### Added
 -   **Structured Logging**: `assay-core` now uses `tracing` for fail-safe events (`assay.failsafe.triggered`), enabling direct Datadog/OTLP integration.
--   **Agent Awareness**: `assay-mcp-server` now includes a `warning` field in the response when `on_error: allow` is active and an error occurs, allowing agents to self-regulate.
+-   **Protocol Feedback**: `assay-mcp-server` now includes a `warning` field in the response when `on_error: allow` is active and an error occurs, allowing clients to adapt logic.
 -   **Documentation**: Added "Look-behind Workarounds" to `docs/guides/migration-regex.md`.
 
 ## [v1.0.0-rc.2] - 2025-12-28

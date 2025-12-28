@@ -187,6 +187,10 @@ nav:
     - Air-Gapped Enterprise: use-cases/air-gapped.md
     - Agent Self-Correction: use-cases/self-correction.md
 
+  - Guides:
+    - guides/index.md
+    - Gateway Pattern: guides/gateway-pattern.md
+
   - Architecture:
     - architecture/index.md
     - Crate Structure: architecture/crates.md

@@ -11,80 +11,61 @@ Run your first Assay test in 60 seconds.
 
 ---
 
-## Step 1: Get a Sample Session
+# Quick Start
 
-If you don't have an MCP session yet, use our example:
+Initialize and run a protocol validation test.
 
-```bash
-# Download sample session
-curl -O https://raw.githubusercontent.com/Rul1an/assay/main/examples/session.json
-```
+## Prerequisites
 
-Or create your own by exporting from [MCP Inspector](https://github.com/modelcontextprotocol/inspector).
+- Assay installed ([installation guide](installation.md))
+- A representative MCP session log (JSON-RPC trace)
 
 ---
 
-## Step 2: Import the Session
+## 1. Import Session Trail
+
+Normalize a raw MCP session into a deterministic trace file. Use the `--init` flag to auto-generate a baseline policy configuration.
 
 ```bash
+# Import from local file
 assay import --format mcp-inspector session.json --init
 ```
 
-Output:
-```
-Imported 47 tool calls from session.json
-Discovered 5 unique tools: apply_discount, get_customer, update_customer, verify_identity, send_email
+**Artifacts Generated:**
+- `traces/session.jsonl`: Normalized execution trail.
+- `mcp-eval.yaml`: Test runner configuration.
+- `policies/default.yaml`: Baseline schema constraints derived from the session.
 
-Created:
-  traces/session-2025-12-27.jsonl
-  mcp-eval.yaml (default config with discovered tools)
-  policies/default.yaml (template policy)
+## 2. Execute Validation
 
-Next steps:
-  1. Review policies/default.yaml and add constraints
-  2. Run: assay run --config mcp-eval.yaml
-```
-
-The `--init` flag auto-generates:
-
-| File | Purpose |
-|------|---------|
-| `traces/*.jsonl` | Normalized trace (your "golden" behavior) |
-| `mcp-eval.yaml` | Test configuration |
-| `policies/default.yaml` | Policy template to customize |
-
----
-
-## Step 3: Run Tests
+Run the replay engine against the generated policy.
 
 ```bash
-assay run --config mcp-eval.yaml
+assay run --config mcp-eval.yaml --strict
 ```
 
-Output:
+**Output:**
 ```
-Assay v0.8.0 — Zero-Flake CI for AI Agents
+Assay v1.0.0
 
 Suite: mcp-basics
-Trace: traces/session-2025-12-27.jsonl
+Trace: traces/session.jsonl
 
 ┌───────────────────┬────────┬─────────────────────────┐
-│ Test              │ Status │ Details                 │
+│ Metric            │ Status │ Details                 │
 ├───────────────────┼────────┼─────────────────────────┤
-│ args_valid        │ ✅ PASS │ 47/47 calls valid       │
-│ sequence_valid    │ ✅ PASS │ All sequences correct   │
-│ tool_blocklist    │ ✅ PASS │ No blocked tools called │
+│ args_valid        │ ✅ PASS │ Schema compliance OK    │
+│ sequence_valid    │ ✅ PASS │ Order invariant OK      │
+│ tool_blocklist    │ ✅ PASS │ No blocked tools        │
 └───────────────────┴────────┴─────────────────────────┘
 
-Total: 3ms | 3 passed, 0 failed
+Total: 2ms | 3 passed, 0 failed
 Exit code: 0
 ```
 
----
+## 3. Refine Constraint Policy
 
-## Step 4: Add a Constraint
-
-Edit `policies/default.yaml` to add a rule:
+Edit `policies/default.yaml` to enforce stricter schema boundaries.
 
 ```yaml
 # policies/default.yaml
@@ -94,71 +75,38 @@ tools:
       percent:
         type: number
         min: 0
-        max: 30  # ← Add this constraint
+        max: 30  # Constraint: Block values > 30
 ```
 
-Now if your agent tries to apply a 50% discount, Assay will catch it:
+## 4. Verify Violation
+
+Re-run the test with a trace containing an invalid value (e.g., 50).
 
 ```bash
 assay run --config mcp-eval.yaml
 ```
 
+**Output:**
 ```
 ❌ FAIL: args_valid
 
    Tool: apply_discount
    Argument: percent = 50
    Violation: Value exceeds maximum (max: 30)
-   Policy: policies/default.yaml:8
-
-   Suggestion: Use percent <= 30
 ```
 
----
+## CI Integration
 
-## Step 5: Add to CI
+Add the validation step to your pipeline manifest.
 
 ```yaml
-# .github/workflows/agent-tests.yml
-name: Agent Quality Gate
-
-on: [push, pull_request]
-
-jobs:
-  assay:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      # 1. Install Assay (pinned version + checksum verify is best practice)
-      - name: Install Assay
-        run: |
-          ASSET="assay-x86_64-unknown-linux-musl.tar.gz"
-          curl -fsSL -o "$ASSET" "https://github.com/Rul1an/assay/releases/download/v0.9.0/$ASSET"
-          tar -xzf "$ASSET"
-          sudo install assay /usr/local/bin/
-
-      # 2. Safety Check (Ensure config is v1 and clean)
-      - name: Check Migration
-        run: assay migrate --check --config mcp-eval.yaml
-
-      # 3. Run Tests (Strict mode for CI)
-      - name: Run Assay
-        run: assay run --config mcp-eval.yaml --strict --junit report.xml
+# .github/workflows/protocol-check.yml
+- name: Protocol Validation
+  run: assay run --config mcp-eval.yaml --strict --junit report.xml
 ```
 
-Every PR now gets instant, deterministic validation.
+This ensures strict protocol compliance for every commit.
 
----
-
-## What Just Happened?
-
-1. **Import** converted your MCP session to a normalized trace
-2. **Policies** defined what "correct" means (argument constraints, sequences)
-3. **Run** replayed the trace and validated against policies
-4. **CI** catches regressions before they hit production
-
-No LLM calls. No network. No flakiness.
 
 ---
 

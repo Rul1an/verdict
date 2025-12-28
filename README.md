@@ -6,280 +6,116 @@
   <br>
 </h1>
 
-<h4 align="center">Policy enforcement for AI agents</h4>
+<h4 align="center">Deterministic Integration Testing for MCP</h4>
 
 <p align="center">
-
   <a href="https://github.com/Rul1an/assay/actions/workflows/assay.yml">
-    <img src="https://github.com/Rul1an/assay/actions/workflows/assay.yml/badge.svg" alt="Assay CI Gate">
+    <img src="https://github.com/Rul1an/assay/actions/workflows/assay.yml/badge.svg" alt="CI Status">
   </a>
   <a href="https://crates.io/crates/assay">
     <img src="https://img.shields.io/crates/v/assay.svg" alt="Crates.io">
   </a>
-  <a href="https://pypi.org/project/assay-it/">
-    <img src="https://img.shields.io/pypi/v/assay-it.svg" alt="PyPI">
-  </a>
   <a href="https://docs.assay.dev">
-    <img src="https://img.shields.io/badge/docs-assay.dev-blue" alt="Docs">
+    <img src="https://img.shields.io/badge/docs-assay.dev-blue" alt="Documentation">
   </a>
   <a href="LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   </a>
 </p>
 
-<p align="center">
-  <a href="#quick-start">Quick Start</a> •
-  <a href="#why-assay">Why Assay</a> •
-  <a href="#how-it-works">How It Works</a> •
-  <a href="#documentation">Docs</a> •
-  <a href="#contributing">Contributing</a>
-</p>
-
 ---
 
-## The Problem
+## Overview
 
-Your AI agent tests are **flaky**. OpenAI times out, the model hallucinates slightly differently, and your CI fails randomly. Developers stop trusting the pipeline.
+Assay is a local Testing & Policy Engine for the **Model Context Protocol (MCP)**. It validates JSON-RPC `call_tool` payloads against strict schema policies with sub-millisecond overhead.
 
-Traditional test: `PR → Call LLM → Wait 3 min → Random failure → Retry → 😤`
+Designed for high-compliance environments, Assay operates in two modes:
+1.  **CI Validation**: Deterministic replay of recorded JSON-RPC sessions.
+2.  **Runtime Gateway**: Sidecar proxy for enforcing protocol constraints in production.
 
-## The Solution
+## Core Capabilities
 
-**Assay** records your agent's behavior once, then replays it locally — **no API calls, no network, no flakiness**.
+*   **Protocol Compliance**: Validates tool arguments against strict JSON Schemas.
+*   **Policy Enforcement**: Blocks disallowed tool sequences and argument values.
+*   **Deterministic Replay**: Re-runs recorded sessions without network I/O or model inference.
+*   **Zero-Overhead**: P99 latency <1ms for policy evaluation.
 
-Assay test: `PR → Replay trace → 3ms → Deterministic pass/fail → ✅`
+## Installation
 
+**CLI (Rust)**:
 ```bash
-# Record once
-assay import --format mcp-inspector session.json --init
-
-# Test forever (0ms latency, $0 cost)
-assay run --config mcp-eval.yaml --strict
-```
-
----
-
-## Quick Start
-
-### Install
-
-**Rust** (Recommended for CLI):
-```bash
-# Note: Crate is named 'assay-cli', binary is 'assay'
 cargo install assay-cli --locked
 ```
 
-**Python** (SDK):
+**SDK (Python)**:
 ```bash
 pip install assay-it
 ```
 
-### Run Your First Test
+## Quick Start
+
+### 1. Verification (CI)
+
+Validate a recorded session against a policy configuration.
 
 ```bash
-# 1. Import an MCP session (creates config automatically)
+# 1. Initialize policy from a recorded session (e.g., via MCP Inspector)
 assay import --format mcp-inspector session.json --init
 
-# 2. Run tests
-assay run --config mcp-eval.yaml
+# 2. Execute validation (Offline, <5ms)
+assay run --config mcp-eval.yaml --strict
 ```
 
-Output:
-```
-Assay v0.8.0 — Zero-Flake CI for AI Agents
+### 2. Enforcement (Runtime)
 
-┌───────────────────┬────────┬─────────────────────────┐
-│ Test              │ Status │ Details                 │
-├───────────────────┼────────┼─────────────────────────┤
-│ args_valid        │ ✅ PASS │ 2ms                     │
-│ sequence_valid    │ ✅ PASS │ 1ms                     │
-│ tool_blocklist    │ ❌ FAIL │ admin_delete called!    │
-└───────────────────┴────────┴─────────────────────────┘
-
-Total: 3ms | 2 passed, 1 failed
-```
-
-### Add to CI
-
-```yaml
-# .github/workflows/agent-tests.yml
-- uses: Rul1an/assay-action@v1
-  with:
-    config: mcp-eval.yaml
-```
-
----
-
-## Why Assay
-
-|  | Traditional LLM Tests | Assay |
-|--|----------------------|-------|
-| **Speed** | 30s - 3min | **3ms** |
-| **Cost** | $0.10 - $1.00/run | **$0.00** |
-| **Flakiness** | 5-20% | **0%** |
-| **Network** | Required | **None** |
-| **Privacy** | Data sent to APIs | **Local only** |
-
-### Use Cases
-
-- **🔒 Air-Gapped Enterprise** — Banks, healthcare, defense. No data leaves your perimeter.
-- **⚡ High-Frequency CI** — 20 PRs/day × 50 tests = $500/day with GPT-4. $0 with Assay.
-- **🎯 MCP Native** — Deep integration with Model Context Protocol. Test tool calls, not text.
-- **🤖 Agent Self-Correction** — Agents validate their own actions at runtime.
-
----
-
-## How It Works
-
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  1. Record      │ ──► │  2. Define      │ ──► │  3. Replay      │
-│  Agent Session  │     │  Policies       │     │  & Validate     │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-        │                       │                       │
-        ▼                       ▼                       ▼
-   session.json            mcp-eval.yaml           Pass/Fail
-   (MCP Inspector)         (Your rules)            (Instant)
-```
-
-**Policies** define what "correct" means:
-
-```yaml
-# mcp-eval.yaml
-tests:
-  - id: discount_args
-    metric: args_valid
-    tool: apply_discount
-    constraints:
-      percent: { max: 30 }
-
-  - id: read_before_write
-    metric: sequence_valid
-    rules:
-      - type: before
-        first: GetCustomer
-        then: UpdateCustomer
-```
-
----
-
-## MCP Integration
-
-Assay is built for the [Model Context Protocol](https://modelcontextprotocol.io).
-
-### Import MCP Sessions
+Run Assay as an MCP Server to validate tool calls before execution.
 
 ```bash
-# From MCP Inspector
-assay import --format mcp-inspector session.json
-
-# Auto-generate policies from a "golden" session
-assay import --format mcp-inspector good_run.json --init
-```
-
-### Assay as MCP Server
-
-Let agents validate their own actions at runtime:
-
-```bash
-# Start Assay as an MCP tool server
+# Start the policy server
 assay mcp-server --port 3001 --policy policies/
 ```
 
-The agent can call `assay_check_args` before executing:
-
+**Client Request:**
 ```json
 {
-  "tool": "assay_check_args",
-  "arguments": {
-    "target_tool": "apply_discount",
-    "args": { "percent": 50 }
+  "method": "tools/call",
+  "params": {
+    "name": "assay_check_args",
+    "arguments": {
+      "target_tool": "deploy_prod",
+      "args": { "force": true }
+    }
   }
 }
 ```
 
-Response:
+**Server Response (Policy Violation):**
 ```json
 {
-  "allowed": false,
-  "violations": [{"field": "percent", "constraint": "max: 30"}],
-  "suggested_fix": {"percent": 30}
+  "content": [{ "type": "text", "text": "Policy violation: 'force' is not allowed in production." }],
+  "isError": true
 }
 ```
 
----
+## Architecture
+
+Assay is distributed as a Rust workspace:
+
+| Crate | Function |
+|-------|----------|
+| `assay-core` | Policy evaluation engine and replay logic. |
+| `assay-cli` | Command-line interface for CI integration. |
+| `assay-mcp-server` | MCP-compliant server implementation for runtime hooks. |
+| `assay-metrics` | Core validation logic (args, sequence, blocklist). |
 
 ## Documentation
 
-📚 **Full documentation:** [docs.assay.dev](https://docs.assay.dev)
+Full technical documentation is available at [docs.assay.dev](https://docs.assay.dev).
 
-- [Getting Started](https://docs.assay.dev/getting-started/)
-- [Configuration Guide](https://docs.assay.dev/config/)
-- [MCP Integration](https://docs.assay.dev/mcp/)
-- [CLI Reference](https://docs.assay.dev/cli/)
-- [Metrics Reference](https://docs.assay.dev/metrics/)
-
----
-
-## Architecture
-
-Assay is a Rust workspace with four crates:
-
-| Crate | Role |
-|-------|------|
-| `assay-core` | Trace ingestion, replay engine, cache, storage |
-| `assay-cli` | CLI interface, commands, formatting |
-| `assay-metrics` | Pure validation functions (`args_valid`, etc.) |
-| `assay-mcp-server` | MCP server for agent self-correction |
-
-```
-assay/
-├── crates/
-│   ├── assay-core/
-│   ├── assay-cli/
-│   ├── assay-metrics/
-│   └── assay-mcp-server/
-├── docs/
-└── examples/
-```
-
----
-
-## Contributing
-
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-```bash
-# Clone
-git clone https://github.com/Rul1an/assay.git
-cd assay
-
-# Build
-cargo build
-
-# Test
-cargo test
-
-# Run locally
-cargo run -- run --config examples/mcp-eval.yaml
-```
-
----
+*   [Configuration Schema](https://docs.assay.dev/config/)
+*   [CLI Reference](https://docs.assay.dev/cli/)
+*   [MCP Integration Guide](https://docs.assay.dev/mcp/)
 
 ## License
 
 MIT License. See [LICENSE](LICENSE).
-
----
-
-## Why "Assay"?
-
-> *In metallurgy, an **assay** determines the purity of precious metals.*
->
-> *In software, Assay determines the quality of your AI.*
-
----
-
-<p align="center">
-  <sub>Built with ❤️ for developers who are tired of flaky AI tests.</sub>
-</p>
