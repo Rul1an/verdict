@@ -267,9 +267,27 @@ impl Server {
                         }
 
                         match result {
-                            Ok(res) => JsonRpcResponse::ok(req.id.clone(), res),
+                            Ok(res) => {
+                                // MCP Compliance: Wrap result in CallToolResult structure
+                                // Spec: { content: [{ type: "text", text: "..." }], isError: bool }
+                                let is_error =
+                                    !res.get("allowed").and_then(|v| v.as_bool()).unwrap_or(true);
+                                let json_text =
+                                    serde_json::to_string_pretty(&res).unwrap_or_default();
+
+                                let mcp_result = serde_json::json!({
+                                    "content": [
+                                        {
+                                            "type": "text",
+                                            "text": json_text
+                                        }
+                                    ],
+                                    "isError": is_error
+                                });
+                                JsonRpcResponse::ok(req.id.clone(), mcp_result)
+                            }
                             Err(e) => {
-                                // Fail-safe handling for internal errors (e.g. policy read failed)
+                                // Fail-safe handling for internal errors
                                 tracing::error!(
                                     event="tool_execution_error",
                                     rid=%rid,
@@ -283,7 +301,19 @@ impl Server {
                                         "message": e.to_string()
                                     }
                                 });
-                                JsonRpcResponse::ok(req.id.clone(), safe_resp)
+                                // Keep consistent wrapping even for internal fail-safe responses
+                                let json_text =
+                                    serde_json::to_string_pretty(&safe_resp).unwrap_or_default();
+                                let mcp_result = serde_json::json!({
+                                    "content": [
+                                        {
+                                            "type": "text",
+                                            "text": json_text
+                                        }
+                                    ],
+                                    "isError": !allow_on_error
+                                });
+                                JsonRpcResponse::ok(req.id.clone(), mcp_result)
                             }
                         }
                     } else {

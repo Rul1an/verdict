@@ -141,6 +141,7 @@ impl Runner {
                             (TestStatus::Error, reason, ErrorPolicy::Block)
                         }
                         ErrorPolicyResult::Allowed { warning } => {
+                            crate::on_error::log_fail_safe(&warning, None);
                             (TestStatus::AllowedOnError, warning, ErrorPolicy::Allow)
                         }
                     };

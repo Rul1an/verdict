@@ -21,16 +21,16 @@ jobs:
   parity:
     name: Batch vs Streaming Parity
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Rust
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
           components: rustfmt, clippy
-      
+
       - name: Cache cargo
         uses: actions/cache@v4
         with:
@@ -41,7 +41,7 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      
+
       - name: Run parity tests
         run: |
           echo "=========================================="
@@ -54,9 +54,9 @@ jobs:
           echo ""
           echo "This is a RELEASE BLOCKER - any divergence is a critical bug."
           echo ""
-          
+
           cargo test -p assay-core --test parity -- --nocapture
-      
+
       - name: Run latency benchmark
         run: |
           echo ""
@@ -64,9 +64,9 @@ jobs:
           echo "LATENCY BENCHMARK"
           echo "=========================================="
           echo ""
-          
+
           cargo test -p assay-core --test latency_check -- --nocapture
-      
+
       - name: Summary
         if: always()
         run: |
@@ -86,28 +86,28 @@ jobs:
     runs-on: ubuntu-latest
     needs: parity
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Rust
-        uses: dtolnay/rust-action@stable
-      
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Build release binaries
         run: |
           cargo build --release -p assay-cli
           cargo build --release -p assay-mcp-server
-      
+
       - name: Create test fixtures
         run: |
           mkdir -p /tmp/parity-test
-          
+
           # Create test config
           cat > /tmp/parity-test/eval.yaml << 'EOF'
           configVersion: 1
           suite: parity-integration
           model: test
-          
+
           tests:
             - id: args_check
               input: "Test discount"
@@ -118,34 +118,34 @@ jobs:
                     properties:
                       percent: { maximum: 30 }
           EOF
-          
+
           # Create test trace
           cat > /tmp/parity-test/trace.jsonl << 'EOF'
           {"type":"tool_call","tool_name":"ApplyDiscount","args":{"percent":15}}
           EOF
-      
+
       - name: Run batch evaluation
         run: |
           ./target/release/assay run \
             --config /tmp/parity-test/eval.yaml \
             --trace-file /tmp/parity-test/trace.jsonl \
             --output-format json > /tmp/parity-test/batch_result.json || true
-      
+
       - name: Run streaming evaluation
         run: |
           # Start MCP server in background
           ./target/release/assay-mcp-server &
           SERVER_PID=$!
           sleep 2
-          
+
           # Call the check endpoint
           curl -s http://localhost:3000/check \
             -H "Content-Type: application/json" \
             -d '{"tool":"ApplyDiscount","args":{"percent":15},"policy_id":"args_check"}' \
             > /tmp/parity-test/streaming_result.json || true
-          
+
           kill $SERVER_PID || true
-      
+
       - name: Compare results
         run: |
           echo "Batch result:"
