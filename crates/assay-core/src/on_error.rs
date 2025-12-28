@@ -63,29 +63,20 @@ pub enum ErrorPolicyResult {
     Allowed { warning: String },
 }
 
-#[derive(Serialize)]
-struct FailSafeEvent<'a> {
-    event: &'static str,
-    reason: &'a str,
-    config_path: Option<&'a str>,
-    timestamp: String,
-    action: &'static str,
-}
-
 /// Logs a fail-safe trigger event in structured JSON format.
 ///
 /// This provides Ops teams with a machine-readable audit trail when the
 /// fail-safe mechanism permits execution despite an error.
 pub fn log_fail_safe(reason: &str, config_path: Option<&str>) {
-    let event = FailSafeEvent {
-        event: "assay.failsafe.triggered",
-        reason,
-        config_path,
-        timestamp: chrono::Utc::now().to_rfc3339(),
-        action: "allowed",
-    };
-    // Use eprintln! to avoid polluting stdout (which might be used for pipe output)
-    eprintln!("{}", serde_json::to_string(&event).unwrap());
+    // SOTA: Use structured tracing instead of println
+    // This allows the binary (CLI or MCP server) to route logs to OTLP/Datadog
+    tracing::warn!(
+        event = "assay.failsafe.triggered",
+        reason = %reason,
+        config_path = %config_path.unwrap_or("none"),
+        action = "allowed",
+        "Fail-safe triggered: {}", reason
+    );
 }
 
 impl ErrorPolicyResult {

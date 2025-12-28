@@ -127,6 +127,7 @@ dependencies = [
  "strsim",
  "tempfile",
  "tokio",
+ "tracing",
 ]
 
 [[package]]

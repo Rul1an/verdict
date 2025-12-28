@@ -41,6 +41,20 @@ However, this safety comes with a trade-off: **Look-around features are limited.
 *   Rule 2 (Blocklist): Block if `^\D*$` (no digits).
 *   *Alternatively in v1.0:* Use multiple simple regexes: `[0-9]` must match.
 
+### 3. Look-behind Workarounds
+Parloa engineers encountered issues migrated German IBAN patterns relying on `(?<=...)`.
+
+**Legacy:** Match digits preceded by "DE".
+```regex
+(?<=DE)\d+
+```
+
+**Assay:** Use **Capture Groups**. Match the prefix, but only extract/validate the group.
+```regex
+DE(\d+)
+```
+*Tip: If you cannot modify the extraction logic, use a broader match and filter the result in a subsequent policy step.*
+
 ## Why this change?
 
 Legacy regex engines use backtracking, which can be exponential `O(2^n)`. A malicious agent output string of 50 chars could hang your CI for minutes. Rust's `regex` is strictly linear, ensuring our **<0.1ms latency guarantee** even on massive traces.

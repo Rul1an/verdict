@@ -294,13 +294,19 @@ impl Server {
                                     error=%e,
                                     fallback=on_error_str
                                 );
-                                let safe_resp = serde_json::json!({
+                                let mut safe_resp = serde_json::json!({
                                     "allowed": allow_on_error,
                                     "error": {
                                         "code": "E_INTERNAL",
                                         "message": e.to_string()
                                     }
                                 });
+
+                                // Celonis Feature: Agent Awareness
+                                // If we fail open, warn the agent so it can self-regulate (e.g. switch to Safe Mode).
+                                if allow_on_error {
+                                    safe_resp["warning"] = serde_json::json!("FAIL-SAFE ACTIVE: Policy engine offline. Proceed with caution (Safe Mode).");
+                                }
                                 // Keep consistent wrapping even for internal fail-safe responses
                                 let json_text =
                                     serde_json::to_string_pretty(&safe_resp).unwrap_or_default();
