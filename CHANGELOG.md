@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 
-## [v1.0.0-rc.3] - 2025-12-28
+## [v1.0.0] - 2025-12-29
 ### Added
 -   **Structured Logging**: `assay-core` now uses `tracing` for fail-safe events (`assay.failsafe.triggered`), enabling direct Datadog/OTLP integration.
 -   **Agent Awareness**: `assay-mcp-server` now includes a `warning` field in the response when `on_error: allow` is active and an error occurs, allowing agents to self-regulate.
