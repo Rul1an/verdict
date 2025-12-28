@@ -15,14 +15,27 @@ We enforce strict code quality standards to ensure reliability in CI environment
     cargo test --workspace
     ```
 
+## Python SDK Development
+
+If working on `assay-python-sdk`:
+
+1.  **Install Editable**:
+    ```bash
+    cd assay-python-sdk/python
+    pip install -e ".[dev]"
+    ```
+2.  **Linting**:
+    ```bash
+    black . && isort . && mypy .
+    ```
+
 ## Pull Requests
 
 *   **Atomic Commits**: Keep changes focused.
-*   **Conventional Commits**: Use conventional commit messages (e.g., `feat:`, `fix:`, `chore:`).
 *   **Regression Check**: Run the CI gate locally before pushing.
     ```bash
     # Example
-    cargo run --release -- ci --config examples/ci-regression-gate/eval.yaml ...
+    cargo run --release --bin assay -- ci --config examples/ci-regression-gate/eval.yaml
     ```
 
 ## Architecture

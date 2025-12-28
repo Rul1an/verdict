@@ -99,6 +99,7 @@ impl Store {
                 fingerprint: row.get(5)?,
                 skip_reason: row.get(6)?,
                 attempts,
+                error_policy_applied: None,
             })
         })?;
 
@@ -158,6 +159,7 @@ impl Store {
                 fingerprint: row.get(5)?,
                 skip_reason: row.get(6)?,
                 attempts,
+                error_policy_applied: None,
             })
         })?;
 
@@ -217,6 +219,7 @@ impl Store {
                 fingerprint: Some(fingerprint.to_string()),
                 skip_reason: None,
                 attempts: None,
+                error_policy_applied: None,
             }))
         } else {
             Ok(None)
@@ -696,6 +699,7 @@ fn status_to_outcome(s: &TestStatus) -> &'static str {
         TestStatus::Error => "error",
         TestStatus::Skipped => "skipped",
         TestStatus::Unstable => "unstable",
+        TestStatus::AllowedOnError => "allowed_on_error",
     }
 }
 

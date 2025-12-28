@@ -11,7 +11,7 @@ pub fn write_junit(suite: &str, results: &[TestResultRow], out: &Path) -> anyhow
     for r in results {
         xml.push_str(&format!(r#"  <testcase name="{}">"#, escape(&r.test_id)));
         match r.status {
-            TestStatus::Pass => {}
+            TestStatus::Pass | TestStatus::AllowedOnError => {}
             TestStatus::Skipped => {
                 xml.push_str(&format!(r#"<skipped message="{}"/>"#, escape(&r.message)))
             }
@@ -73,6 +73,7 @@ mod tests {
                 fingerprint: None,
                 skip_reason: None,
                 attempts: None,
+                error_policy_applied: None,
             },
             TestResultRow {
                 test_id: "test_warn".into(),
@@ -85,6 +86,7 @@ mod tests {
                 fingerprint: None,
                 skip_reason: None,
                 attempts: None,
+                error_policy_applied: None,
             },
             TestResultRow {
                 test_id: "test_fail".into(),
@@ -97,6 +99,7 @@ mod tests {
                 fingerprint: None,
                 skip_reason: None,
                 attempts: None,
+                error_policy_applied: None,
             },
         ];
 

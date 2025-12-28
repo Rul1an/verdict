@@ -18,7 +18,7 @@ Verify installation:
 
 ```bash
 assay --version
-# assay 0.8.0
+# assay 0.9.0
 ```
 
 ---

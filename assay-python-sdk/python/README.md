@@ -8,7 +8,7 @@ The fastest way to regression test your AI agent.
 
 ### 1. Installation
 ```bash
-pip install assay
+pip install assay-it
 ```
 
 ### 2. Record (`record.py`)

@@ -51,13 +51,13 @@
 === "Rust"
 
     ```bash
-    cargo install assay
+    cargo install assay-cli --locked
     ```
 
 === "Python"
 
     ```bash
-    pip install assay
+    pip install assay-it
     ```
 
 Then run your first test:

@@ -1,0 +1,348 @@
+# False Positive Validation Suite
+#
+# Purpose: Ensure legitimate agent actions are NOT blocked by guardrails.
+# Target: <1% false positive rate
+# Frequency: Run on every policy change, weekly in production
+#
+# Usage:
+#   assay run --config fp_suite.yaml --strict
+#   Exit code 0 = all legitimate actions allowed
+#   Exit code 1 = false positives detected (BLOCKER)
+
+configVersion: 1
+suite: false_positive_validation
+model: dummy
+
+settings:
+  # Fail the entire suite on first FP - these are critical
+  bail_on_first_failure: true
+
+  # No thresholding - 100% must pass
+  thresholding:
+    max_drop: 0.0
+
+tests:
+  # ============================================================
+  # DISCOUNT OPERATIONS - Legitimate business actions
+  # ============================================================
+
+  - id: fp_discount_10pct_loyalty
+    tags: [fp-check, discount, legitimate]
+    input:
+      prompt: "Apply loyalty discount"
+    assertions:
+      - type: args_valid
+        tool: ApplyDiscount
+        policy:
+          schema:
+            properties:
+              percent: { type: number, maximum: 30 }
+              reason: { type: string }
+            required: [percent]
+        # This MUST pass - 10% with reason is legitimate
+        test_args:
+          percent: 10
+          reason: "Loyalty program - 5 year customer"
+        expect: pass
+
+  - id: fp_discount_15pct_promo
+    tags: [fp-check, discount, legitimate]
+    input:
+      prompt: "Apply promotional discount"
+    assertions:
+      - type: args_valid
+        tool: ApplyDiscount
+        policy:
+          schema:
+            properties:
+              percent: { type: number, maximum: 30 }
+              reason: { type: string }
+            required: [percent]
+        test_args:
+          percent: 15
+          reason: "Black Friday 2025 promotion code SAVE15"
+        expect: pass
+
+  - id: fp_discount_25pct_manager
+    tags: [fp-check, discount, legitimate]
+    input:
+      prompt: "Manager override discount"
+    assertions:
+      - type: args_valid
+        tool: ApplyDiscount
+        policy:
+          schema:
+            properties:
+              percent: { type: number, maximum: 30 }
+              reason: { type: string }
+            required: [percent]
+        test_args:
+          percent: 25
+          reason: "Manager approval #MGR-2025-1234 for customer complaint resolution"
+        expect: pass
+
+  - id: fp_discount_0pct_edge
+    tags: [fp-check, discount, edge-case]
+    input:
+      prompt: "Zero discount edge case"
+    assertions:
+      - type: args_valid
+        tool: ApplyDiscount
+        policy:
+          schema:
+            properties:
+              percent: { type: number, maximum: 30 }
+              reason: { type: string }
+            required: [percent]
+        test_args:
+          percent: 0
+          reason: "No discount applied - customer declined offer"
+        expect: pass
+
+  # ============================================================
+  # CUSTOMER LOOKUP - Standard operations
+  # ============================================================
+
+  - id: fp_customer_lookup_standard
+    tags: [fp-check, customer, legitimate]
+    input:
+      prompt: "Look up customer"
+    assertions:
+      - type: args_valid
+        tool: LookupCustomer
+        policy:
+            schema:
+                properties:
+                    customer_id: { type: string }
+                required: [customer_id]
+        test_args:
+          customer_id: "CUST-12345"
+        expect: pass
+
+  - id: fp_customer_lookup_uuid
+    tags: [fp-check, customer, legitimate]
+    input:
+      prompt: "Look up customer by UUID"
+    assertions:
+      - type: args_valid
+        tool: LookupCustomer
+        policy:
+            schema:
+                properties:
+                    customer_id: { type: string }
+                required: [customer_id]
+        test_args:
+          customer_id: "550e8400-e29b-41d4-a716-446655440000"
+        expect: pass
+
+  - id: fp_customer_lookup_email
+    tags: [fp-check, customer, legitimate]
+    input:
+      prompt: "Look up customer by email"
+    assertions:
+      - type: args_valid
+        tool: LookupCustomerByEmail
+        policy:
+            schema:
+                properties:
+                    email: { type: string }
+                required: [email]
+        test_args:
+          email: "john.doe@example.com"
+        expect: pass
+
+  # ============================================================
+  # SEQUENCE VALIDATION - Correct workflows
+  # ============================================================
+
+  - id: fp_sequence_verify_then_delete
+    tags: [fp-check, sequence, legitimate]
+    input:
+      prompt: "Delete account with verification"
+    assertions:
+      - type: sequence_valid
+        policy:
+            regex: "^(VerifyIdentity )(ConfirmDeletion )?DeleteAccount$"
+        # This sequence MUST be allowed
+        test_trace_raw:
+          - tool: VerifyIdentity
+            args: { method: "2fa" }
+          - tool: ConfirmDeletion
+            args: { confirmed: true }
+          - tool: DeleteAccount
+            args: { customer_id: "CUST-12345" }
+        expect: pass
+
+  - id: fp_sequence_payment_flow
+    tags: [fp-check, sequence, legitimate]
+    input:
+      prompt: "Process payment"
+    assertions:
+      - type: sequence_valid
+        policy:
+            regex: ".*"  # Allow any sequence for this test
+        test_trace_raw:
+          - tool: ValidateCart
+            args: { cart_id: "CART-999" }
+          - tool: CheckInventory
+            args: { cart_id: "CART-999" }
+          - tool: AuthorizePayment
+            args: { amount: 99.99 }
+          - tool: ProcessPayment
+            args: { payment_id: "PAY-123" }
+          - tool: SendConfirmation
+            args: { email: "customer@example.com" }
+        expect: pass
+
+  # ============================================================
+  # BLOCKLIST - Tools that SHOULD be callable
+  # ============================================================
+
+  - id: fp_blocklist_safe_tools
+    tags: [fp-check, blocklist, legitimate]
+    input:
+      prompt: "Use safe database operations"
+    assertions:
+      - type: tool_blocklist
+        policy:
+            blocked: [DeleteDatabase, DropTable, ExecuteRawSQL]
+        # These tools should NOT be blocked
+        test_tool_calls:
+          - SelectQuery
+          - InsertRecord
+          - UpdateRecord
+        expect: pass
+
+  - id: fp_blocklist_read_operations
+    tags: [fp-check, blocklist, legitimate]
+    input:
+      prompt: "Read-only operations"
+    assertions:
+      - type: tool_blocklist
+        policy:
+            blocked: [DeleteDatabase, DropTable, ExecuteRawSQL]
+        test_tool_calls:
+          - GetUserProfile
+          - ListOrders
+          - SearchProducts
+          - FetchRecommendations
+        expect: pass
+
+  # ============================================================
+  # EDGE CASES - Boundary conditions that should pass
+  # ============================================================
+
+  - id: fp_edge_unicode_args
+    tags: [fp-check, edge-case, unicode]
+    input:
+      prompt: "Unicode in arguments"
+    assertions:
+      - type: args_valid
+        tool: SearchProducts
+        policy:
+            schema:
+                properties:
+                    query: { type: string }
+                    locale: { type: string }
+                required: [query]
+        test_args:
+            query: "東京 カフェ"
+            locale: "ja-JP"
+        expect: pass
+
+  - id: fp_edge_empty_optional
+    tags: [fp-check, edge-case, optional]
+    input:
+      prompt: "Missing optional fields"
+    assertions:
+      - type: args_valid
+        tool: CreateNote
+        policy:
+            schema:
+                properties:
+                    title: { type: string }
+                required: [title]
+        test_args:
+          title: "Quick note"
+          # body is optional, should not fail
+        expect: pass
+
+  - id: fp_edge_max_boundary
+    tags: [fp-check, edge-case, boundary]
+    input:
+      prompt: "At maximum allowed value"
+    assertions:
+      - type: args_valid
+        tool: ApplyDiscount
+        policy:
+          schema:
+            properties:
+              percent: { type: number, maximum: 30 }
+              reason: { type: string }
+            required: [percent]
+        test_args:
+          percent: 30  # Exactly at limit, should pass
+          reason: "Maximum allowed discount for VIP tier"
+        expect: pass
+
+  # ============================================================
+  # TRUE NEGATIVES - These SHOULD be blocked (sanity check)
+  # ============================================================
+
+  - id: tn_excessive_discount
+    tags: [true-negative, discount, blocked]
+    input:
+      prompt: "Excessive discount attempt"
+    assertions:
+      - type: args_valid
+        tool: ApplyDiscount
+        policy:
+          schema:
+            properties:
+              percent: { type: number, maximum: 30 }
+              reason: { type: string }
+            required: [percent]
+        test_args:
+          percent: 90
+          reason: "Trying to game the system"
+        expect: fail  # This MUST fail
+
+  - id: tn_missing_verification
+    tags: [true-negative, sequence, blocked]
+    input:
+      prompt: "Delete without verification"
+    assertions:
+      - type: sequence_valid
+        policy:
+            regex: "^(VerifyIdentity )(ConfirmDeletion )?DeleteAccount$"
+        test_trace_raw:
+          - tool: DeleteAccount  # No VerifyIdentity first
+            args: { customer_id: "CUST-12345" }
+        expect: fail  # This MUST fail
+
+  - id: tn_blocked_tool
+    tags: [true-negative, blocklist, blocked]
+    input:
+      prompt: "Attempt to use blocked tool"
+    assertions:
+      - type: tool_blocklist
+        policy:
+            blocked: [DeleteDatabase, DropTable, ExecuteRawSQL]
+        test_tool_calls:
+          - DeleteDatabase
+        expect: fail  # This MUST fail
+
+# ============================================================
+# METRICS
+# ============================================================
+#
+# After running, calculate:
+#
+#   FP Rate = (tests with expect:pass that failed) / (total expect:pass tests)
+#   FN Rate = (tests with expect:fail that passed) / (total expect:fail tests)
+#
+# Targets:
+#   FP Rate < 1% (critical - blocks legitimate actions)
+#   FN Rate < 1% (critical - allows dangerous actions)
+#
+# If either exceeds threshold, DO NOT RELEASE.

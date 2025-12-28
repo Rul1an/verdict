@@ -167,6 +167,12 @@ impl Server {
                         let default_args = serde_json::json!({});
                         let args = params.get("arguments").unwrap_or(&default_args);
 
+                        let on_error_str = args
+                            .get("on_error")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("block");
+                        let allow_on_error = on_error_str.eq_ignore_ascii_case("allow");
+
                         let policy = args.get("policy").and_then(|v| v.as_str()).unwrap_or("");
                         let bytes_in = line.len();
                         let args_bytes = serde_json::to_vec(args).map(|b| b.len()).unwrap_or(0);
@@ -179,6 +185,7 @@ impl Server {
                            rpc_id=?req.id,
                            tool=name,
                            policy=policy,
+                           on_error=on_error_str,
                            bytes_in=bytes_in,
                            args_bytes=args_bytes,
                         );
@@ -197,11 +204,12 @@ impl Server {
                                    tool=name,
                                    policy=policy,
                                    duration_ms=dur,
-                                   code="E_TIMEOUT"
+                                   code="E_TIMEOUT",
+                                   fallback=on_error_str
                                 );
                                 // Timed out
                                 Ok(serde_json::json!({
-                                    "allowed": false, // Fail-safe
+                                    "allowed": allow_on_error,
                                     "error": {
                                         "code": "E_TIMEOUT",
                                         "message": format!("Request exceeded {}ms", cfg.timeout_ms)
@@ -260,11 +268,23 @@ impl Server {
 
                         match result {
                             Ok(res) => JsonRpcResponse::ok(req.id.clone(), res),
-                            Err(e) => JsonRpcResponse::error(
-                                req.id.clone(),
-                                -32603,
-                                format!("Tool execution failed: {}", e),
-                            ),
+                            Err(e) => {
+                                // Fail-safe handling for internal errors (e.g. policy read failed)
+                                tracing::error!(
+                                    event="tool_execution_error",
+                                    rid=%rid,
+                                    error=%e,
+                                    fallback=on_error_str
+                                );
+                                let safe_resp = serde_json::json!({
+                                    "allowed": allow_on_error,
+                                    "error": {
+                                        "code": "E_INTERNAL",
+                                        "message": e.to_string()
+                                    }
+                                });
+                                JsonRpcResponse::ok(req.id.clone(), safe_resp)
+                            }
                         }
                     } else {
                         JsonRpcResponse::error(req.id.clone(), -32602, "Missing params".to_string())

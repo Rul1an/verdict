@@ -9,17 +9,18 @@ Install Assay on your system.
 === "pip (Python)"
 
     ```bash
-    pip install assay
+    pip install assay-it
     ```
-    
+
     Requires Python 3.9+. Installs the `assay` CLI globally.
 
 === "cargo (Rust)"
 
     ```bash
-    cargo install assay
+    cargo install assay-cli --locked
     ```
-    
+
+    **Note:** The crate is named `assay-cli`, but the binary is `assay`.
     Requires Rust 1.70+. Builds from source (~2 minutes).
 
 === "Homebrew (macOS)"
@@ -27,7 +28,7 @@ Install Assay on your system.
     ```bash
     brew install rul1an/tap/assay
     ```
-    
+
     Installs pre-built binary.
 
 === "Binary (Linux/macOS)"
@@ -35,7 +36,7 @@ Install Assay on your system.
     ```bash
     # Download latest release
     curl -L https://github.com/Rul1an/assay/releases/latest/download/assay-$(uname -s)-$(uname -m).tar.gz | tar xz
-    
+
     # Move to PATH
     sudo mv assay /usr/local/bin/
     ```
@@ -50,7 +51,7 @@ assay --version
 
 Expected output:
 ```
-assay 0.8.0
+assay 0.9.0
 ```
 
 ---
@@ -71,7 +72,7 @@ xattr -d com.apple.quarantine /usr/local/bin/assay
 === "Cargo"
 
     ```powershell
-    cargo install assay
+    cargo install assay-cli --locked
     ```
 
 === "Scoop"
@@ -121,7 +122,7 @@ cargo build --release
 
 ```yaml
 - name: Install Assay
-  run: cargo install assay
+  run: cargo install assay-cli --locked
 
 # Or use our action (includes caching)
 - uses: Rul1an/assay-action@v1
@@ -131,13 +132,13 @@ cargo build --release
 
 ```yaml
 before_script:
-  - cargo install assay
+  - cargo install assay-cli --locked
 ```
 
 ### Azure Pipelines
 
 ```yaml
-- script: cargo install assay
+- script: cargo install assay-cli --locked
   displayName: 'Install Assay'
 ```
 
@@ -148,13 +149,13 @@ before_script:
 === "pip"
 
     ```bash
-    pip uninstall assay
+    pip uninstall assay-it
     ```
 
 === "cargo"
 
     ```bash
-    cargo uninstall assay
+    cargo uninstall assay-cli
     ```
 
 === "Homebrew"

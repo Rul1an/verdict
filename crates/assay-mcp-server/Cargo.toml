@@ -4,6 +4,7 @@ version = "0.9.0"
 edition = "2021"
 license.workspace = true
 repository.workspace = true
+readme.workspace = true
 description = "MCP server integration for Assay"
 
 [dependencies]
