@@ -25,6 +25,8 @@ pub enum Command {
     Doctor(DoctorArgs),
     Import(ImportArgs),
     Migrate(MigrateArgs),
+    Coverage(CoverageArgs),
+    Explain(super::commands::explain::ExplainArgs),
     Version,
 }
 
@@ -466,4 +468,19 @@ pub struct MigrateArgs {
     /// Check if migration is needed (exit 2 if needed, 0 if clean)
     #[arg(long)]
     pub check: bool,
+}
+
+#[derive(clap::Args, Debug, Clone)]
+pub struct CoverageArgs {
+    #[arg(long, default_value = "eval.yaml")]
+    pub config: std::path::PathBuf,
+
+    #[arg(long)]
+    pub trace_file: std::path::PathBuf,
+
+    #[arg(long, default_value_t = 0.0)]
+    pub threshold: f64,
+
+    #[arg(long, default_value = "text")]
+    pub format: String, // text|json|markdown|github
 }

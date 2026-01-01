@@ -7,7 +7,9 @@ pub mod baseline;
 pub mod calibrate;
 pub mod trace;
 
+pub mod coverage;
 pub mod doctor;
+pub mod explain;
 pub mod import;
 pub mod migrate;
 pub mod validate;
@@ -35,6 +37,8 @@ pub async fn dispatch(cli: Cli, legacy_mode: bool) -> anyhow::Result<i32> {
             }
         },
         Command::Migrate(args) => migrate::cmd_migrate(args),
+        Command::Coverage(args) => coverage::cmd_coverage(args).await,
+        Command::Explain(args) => explain::run(args).await,
         Command::Version => {
             println!("{}", env!("CARGO_PKG_VERSION"));
             Ok(exit_codes::OK)

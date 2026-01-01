@@ -46,6 +46,8 @@ impl Metric for SequenceValidMetric {
             // Try parsing as list of strings (legacy sequence)
             if let Ok(seq) = serde_yaml::from_str::<Vec<String>>(&content) {
                 (Some(seq), None)
+            } else if let Ok(pol) = serde_yaml::from_str::<assay_core::model::Policy>(&content) {
+                (None, Some(pol.sequences))
             } else {
                 // Try parsing as list of rules
                 let rules = serde_yaml::from_str::<Vec<assay_core::model::SequenceRule>>(&content)
@@ -130,6 +132,9 @@ impl Metric for SequenceValidMetric {
                                 ));
                             }
                         }
+                    }
+                    _ => {
+                        // TODO: Implement v1.1 operators (Eventually, MaxCalls, etc) in metrics
                     }
                 }
             }

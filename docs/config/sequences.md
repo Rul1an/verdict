@@ -142,13 +142,13 @@ rules:
 
 ---
 
-### `count` — Call Frequency
+### `max_calls` — Call Frequency Limit
 
-Limit how many times a tool can be called.
+Limit how many times a tool can be called (formerly `count`).
 
 ```yaml
 rules:
-  - type: count
+  - type: max_calls
     tool: SendEmail
     max: 3
 ```
@@ -158,16 +158,60 @@ rules:
 | `[SendEmail, SendEmail]` | ✅ Pass |
 | `[SendEmail, SendEmail, SendEmail, SendEmail]` | ❌ Fail |
 
-Options:
+---
+
+### `eventually` — Temporal Deadline
+
+A tool must be called within `N` steps of the start of the trace.
 
 ```yaml
 rules:
-  - type: count
-    tool: SendEmail
-    min: 1      # At least 1
-    max: 3      # At most 3
-    exact: 2    # Exactly 2 (overrides min/max)
+  - type: eventually
+    tool: ValidateOutput
+    within: 5
 ```
+
+| Trace | Result |
+|-------|--------|
+| `[Step1, ..., Step4, ValidateOutput]` | ✅ Pass |
+| `[Step1, ..., Step10]` (no validation) | ❌ Fail |
+
+---
+
+### `never_after` — Forbidden Transition
+
+A forbidden tool must never be called after a trigger tool has been used.
+
+```yaml
+rules:
+  - type: never_after
+    trigger: CommitTransaction
+    forbidden: ModifyData
+```
+
+| Trace | Result |
+|-------|--------|
+| `[ModifyData, CommitTransaction]` | ✅ Pass |
+| `[CommitTransaction, ModifyData]` | ❌ Fail |
+
+---
+
+### `after` — Dependent Deadline
+
+Tool B must be called within `N` steps **after** Tool A occurred.
+
+```yaml
+rules:
+  - type: after
+    trigger: OpenFile
+    then: CloseFile
+    within: 10
+```
+
+| Trace | Result |
+|-------|--------|
+| `[OpenFile, Read, CloseFile]` | ✅ Pass |
+| `[OpenFile, ..., (10 steps), ...]` | ❌ Fail |
 
 ---
 
@@ -183,16 +227,16 @@ tests:
       # Must verify identity
       - type: require
         tool: VerifyIdentity
-      
+
       # Must verify before any destructive action
       - type: before
         first: VerifyIdentity
         then: DeleteCustomer
-      
+
       # Never call admin tools
       - type: blocklist
         tools: [admin_*]
-      
+
       # Max 5 API calls
       - type: count
         tool: ExternalAPI
@@ -232,12 +276,12 @@ rules:
   - type: before
     first: ValidateCart
     then: ProcessPayment
-  
+
   # Verify inventory before charging
   - type: before
     first: CheckInventory
     then: ProcessPayment
-  
+
   # Never refund more than once
   - type: count
     tool: ProcessRefund
@@ -251,17 +295,17 @@ rules:
   # Always authenticate
   - type: require
     tool: AuthenticateUser
-  
+
   # Authenticate before any data access
   - type: before
     first: AuthenticateUser
     then: GetPatientRecord
-  
+
   # Log all access
   - type: immediately_before
     first: GetPatientRecord
     then: LogAccess
-  
+
   # No admin tools
   - type: blocklist
     tools: [admin_*, system_override]
@@ -275,7 +319,7 @@ rules:
   - type: before
     first: RouterAgent
     then: [SpecialistA, SpecialistB, SpecialistC]
-  
+
   # Only one specialist per request
   - type: count
     tool: SpecialistA
@@ -369,9 +413,13 @@ Create traces that *should* fail to verify your rules catch violations.
 | `require` | `tool` | — |
 | `before` | `first`, `then` | — |
 | `immediately_before` | `first`, `then` | — |
-| `blocklist` | `tools` | — |
+| `blocklist` | `pattern` | — |
 | `allowlist` | `tools` | — |
-| `count` | `tool` | `min`, `max`, `exact` |
+| `max_calls` | `tool`, `max` | — |
+| `eventually` | `tool`, `within` | — |
+| `never_after` | `trigger`, `forbidden` | — |
+| `after` | `trigger`, `then`, `within` | — |
+| `sequence` | `tools` | `strict` |
 
 ---
 

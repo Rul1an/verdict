@@ -47,8 +47,10 @@ impl ToolError {
 }
 
 pub mod check_args;
+pub mod check_coverage;
 pub mod check_sequence;
 pub mod policy_decide;
+pub mod explain_trace;
 
 pub fn list_tools() -> Vec<Value> {
     vec![
@@ -90,6 +92,44 @@ pub fn list_tools() -> Vec<Value> {
                 "required": ["tool", "policy"]
             }
         }),
+        serde_json::json!({
+            "name": "assay_check_coverage",
+            "description": "Analyze trace coverage against a policy.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "policy": { "type": "string" },
+                    "traces": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": { "type": "string" },
+                                "tools": { "type": "array", "items": { "type": "string" } },
+                                "rules_triggered": { "type": "array", "items": { "type": "string" } }
+                            },
+                            "required": ["tools"]
+                        }
+                    },
+                    "threshold": { "type": "number" },
+                    "format": { "type": "string", "enum": ["json", "markdown", "github"] }
+                },
+                "required": ["policy", "traces"]
+            }
+        }),
+        serde_json::json!({
+            "name": "assay_explain_trace",
+            "description": "Explain trace evaluation against a policy",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "policy": { "type": "string" },
+                    "trace": { "type": "array" },
+                    "format": { "type": "string", "enum": ["json", "markdown", "terminal", "html"] }
+                },
+                "required": ["policy", "trace"]
+            }
+        }),
     ]
 }
 
@@ -98,6 +138,8 @@ pub async fn handle_call(ctx: &ToolContext, name: &str, args: &Value) -> anyhow:
         "assay_check_args" => check_args::check_args(ctx, args).await,
         "assay_check_sequence" => check_sequence::check_sequence(ctx, args).await,
         "assay_policy_decide" => policy_decide::policy_decide(ctx, args).await,
+        "assay_check_coverage" => check_coverage::check_coverage(ctx, args).await,
+        "assay_explain_trace" => explain_trace::explain_trace(ctx, args).await,
         _ => Err(anyhow::anyhow!("Unknown tool: {}", name)),
     }
 }

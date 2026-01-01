@@ -34,12 +34,10 @@ Install Assay on your system.
 === "Binary (Linux/macOS)"
 
     ```bash
-    # Download latest release
-    curl -L https://github.com/Rul1an/assay/releases/latest/download/assay-$(uname -s)-$(uname -m).tar.gz | tar xz
-
-    # Move to PATH
-    sudo mv assay /usr/local/bin/
+    curl -sSL https://assay.dev/install.sh | sh
     ```
+
+    Installs `assay` to `~/.assay/bin` and updates your PATH.
 
 ---
 
@@ -125,7 +123,7 @@ cargo build --release
   run: cargo install assay-cli --locked
 
 # Or use our action (includes caching)
-- uses: Rul1an/assay-action@v1
+- uses: assay-dev/assay-action@v1
 ```
 
 ### GitLab CI

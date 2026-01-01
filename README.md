@@ -42,6 +42,11 @@ Designed for high-compliance environments, Assay operates in two modes:
 
 ## Installation
 
+**Quick Install (Linux/macOS)**:
+```bash
+curl -sSL https://assay.dev/install.sh | sh
+```
+
 **CLI (Rust)**:
 ```bash
 cargo install assay-cli --locked
