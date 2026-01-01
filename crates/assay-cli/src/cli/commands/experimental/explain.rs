@@ -11,9 +11,9 @@
 //!   assay explain -t trace.json -p policy.yaml --format html -o report.html
 
 use anyhow::{Context, Result};
+use assay_core::experimental::explain;
 use clap::Args;
 use std::path::PathBuf;
-use assay_core::experimental::explain::{self, StepVerdict};
 
 #[derive(Args, Debug)]
 pub struct ExplainArgs {
@@ -51,12 +51,10 @@ enum TraceInput {
     /// Object with tools field
     Object {
         #[serde(alias = "tool_calls", alias = "calls")]
-        tools: Vec<ToolCallInput>
+        tools: Vec<ToolCallInput>,
     },
     /// OpenTelemetry-style spans
-    OTelTrace {
-        spans: Vec<OTelSpan>
-    },
+    OTelTrace { spans: Vec<OTelSpan> },
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -143,20 +141,15 @@ pub async fn run(args: ExplainArgs) -> Result<i32> {
 fn parse_trace(content: &str) -> Result<Vec<explain::ToolCall>> {
     let content = content.trim();
 
-    // Try parsing as JSON first
-    if content.starts_with('[') || content.starts_with('{') {
-        let input: TraceInput = serde_json::from_str(content)?;
-
+    // Try parsing as JSON first (Array or Object or OTel)
+    if let Ok(input) = serde_json::from_str::<TraceInput>(content) {
         return Ok(match input {
-            TraceInput::Array(calls) => {
-                calls.into_iter().map(|c| c.to_tool_call()).collect()
-            }
-            TraceInput::Object { tools } => {
-                tools.into_iter().map(|c| c.to_tool_call()).collect()
-            }
+            TraceInput::Array(calls) => calls.into_iter().map(|c| c.to_tool_call()).collect(),
+            TraceInput::Object { tools } => tools.into_iter().map(|c| c.to_tool_call()).collect(),
             TraceInput::OTelTrace { spans } => {
                 // Convert OTel spans to tool calls
-                spans.into_iter()
+                spans
+                    .into_iter()
                     .filter(|s| s.name.contains('.') || !s.name.starts_with("internal"))
                     .map(|s| explain::ToolCall {
                         tool: s.name,
@@ -175,8 +168,8 @@ fn parse_trace(content: &str) -> Result<Vec<explain::ToolCall>> {
             continue;
         }
 
-        let input: ToolCallInput = serde_json::from_str(line)
-            .with_context(|| format!("Invalid JSON line: {}", line))?;
+        let input: ToolCallInput =
+            serde_json::from_str(line).with_context(|| format!("Invalid JSON line: {}", line))?;
         calls.push(input.to_tool_call());
     }
 
@@ -186,9 +179,14 @@ fn parse_trace(content: &str) -> Result<Vec<explain::ToolCall>> {
 fn format_verbose(explanation: &explain::TraceExplanation) -> String {
     let mut lines = Vec::new();
 
-    lines.push(format!("Policy: {} (v{})", explanation.policy_name, explanation.policy_version));
-    lines.push(format!("Trace: {} steps ({} allowed, {} blocked)\n",
-        explanation.total_steps, explanation.allowed_steps, explanation.blocked_steps));
+    lines.push(format!(
+        "Policy: {} (v{})",
+        explanation.policy_name, explanation.policy_version
+    ));
+    lines.push(format!(
+        "Trace: {} steps ({} allowed, {} blocked)\n",
+        explanation.total_steps, explanation.allowed_steps, explanation.blocked_steps
+    ));
 
     lines.push("Timeline:".to_string());
     lines.push(String::new());
@@ -204,7 +202,10 @@ fn format_verbose(explanation: &explain::TraceExplanation) -> String {
         lines.push(format!("  Tool: {} {}", step.tool, icon));
 
         if let Some(args) = &step.args {
-            lines.push(format!("  Args: {}", serde_json::to_string(args).unwrap_or_default()));
+            lines.push(format!(
+                "  Args: {}",
+                serde_json::to_string(args).unwrap_or_default()
+            ));
         }
 
         lines.push(format!("  Verdict: {:?}", step.verdict));
@@ -213,7 +214,10 @@ fn format_verbose(explanation: &explain::TraceExplanation) -> String {
         lines.push("  Rules Evaluated:".to_string());
         for eval in &step.rules_evaluated {
             let status = if eval.passed { "✓" } else { "✗" };
-            lines.push(format!("    {} [{}] {}", status, eval.rule_type, eval.rule_id));
+            lines.push(format!(
+                "    {} [{}] {}",
+                status, eval.rule_type, eval.rule_id
+            ));
             lines.push(format!("      {}", eval.explanation));
         }
 
@@ -231,7 +235,10 @@ fn format_blocked_only(explanation: &explain::TraceExplanation) -> String {
         return lines.join("\n");
     }
 
-    lines.push(format!("❌ {} blocked step(s):\n", explanation.blocked_steps));
+    lines.push(format!(
+        "❌ {} blocked step(s):\n",
+        explanation.blocked_steps
+    ));
 
     for step in &explanation.steps {
         if step.verdict != explain::StepVerdict::Blocked {
