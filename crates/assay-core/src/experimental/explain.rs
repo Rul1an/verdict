@@ -573,7 +573,7 @@ impl ExplainerState {
                         }
                     }
                 } else {
-                    explanation = format!("Sequence complete ✓");
+                    explanation = "Sequence complete ✓".to_string();
                 }
 
                 RuleEvaluation {
@@ -799,8 +799,8 @@ impl TraceExplanation {
             "**Policy:** {} (v{})\n\n",
             self.policy_name, self.policy_version
         ));
-        md.push_str(&format!("| Steps | Allowed | Blocked |\n"));
-        md.push_str(&format!("|-------|---------|----------|\n"));
+        md.push_str("| Steps | Allowed | Blocked |\n");
+        md.push_str("|-------|---------|----------|\n");
         md.push_str(&format!(
             "| {} | {} | {} |\n\n",
             self.total_steps, self.allowed_steps, self.blocked_steps

@@ -32,6 +32,7 @@ async fn test_path_traversal_prevention() -> Result<()> {
             .as_nanos()
     ));
     tokio::fs::create_dir_all(&temp_root).await?;
+    let temp_root = std::fs::canonicalize(&temp_root)?;
 
     // Create a valid policy
     tokio::fs::write(temp_root.join("valid.yaml"), "ls:\n  type: object").await?;
@@ -73,9 +74,19 @@ async fn test_path_traversal_prevention() -> Result<()> {
     let mut line = String::new();
     reader.read_line(&mut line).await?;
     let resp: serde_json::Value = serde_json::from_str(&line)?;
+
+    // Parse MCP ToolResult: content[0].text contains the JSON result
+    let content_text = resp["result"]["content"][0]["text"].as_str()
+        .expect("Missing content text in MCP response");
+
+    // Debug print raw response if needed
+    // eprintln!("Valid Resp: {}", content_text);
+
+    let tool_res: serde_json::Value = serde_json::from_str(content_text)?;
+
     assert!(
-        resp["result"]["allowed"].as_bool().unwrap_or(false),
-        "Valid policy should be allowed"
+        tool_res["allowed"].as_bool().unwrap_or(false),
+        "Valid policy should be allowed. Got: {:?}", tool_res
     );
 
     // 3. Test: Access Invalid Path (Traversal)
@@ -100,15 +111,18 @@ async fn test_path_traversal_prevention() -> Result<()> {
     reader.read_line(&mut line).await?;
     let resp: serde_json::Value = serde_json::from_str(&line)?;
 
+    let content_text = resp["result"]["content"][0]["text"].as_str()
+        .expect("Missing content text in MCP response");
+    let tool_res: serde_json::Value = serde_json::from_str(content_text)?;
+
     // Expect failure
-    let result = &resp["result"];
     assert_eq!(
-        result["allowed"].as_bool(),
+        tool_res["allowed"].as_bool(),
         Some(false),
         "Should deny traversal"
     );
     assert_eq!(
-        result["error"]["code"].as_str(),
+        tool_res["error"]["code"].as_str(),
         Some("E_PERMISSION_DENIED"),
         "Should return E_PERMISSION_DENIED"
     );
@@ -142,15 +156,18 @@ async fn test_path_traversal_prevention() -> Result<()> {
         reader.read_line(&mut line).await?;
         let resp: serde_json::Value = serde_json::from_str(&line)?;
 
+        let content_text = resp["result"]["content"][0]["text"].as_str()
+             .expect("Missing content text in MCP response");
+        let tool_res: serde_json::Value = serde_json::from_str(content_text)?;
+
         // Expect failure due to canonicalization check
-        let result = &resp["result"];
         assert_eq!(
-            result["allowed"].as_bool(),
+            tool_res["allowed"].as_bool(),
             Some(false),
             "Should deny symlink escape"
         );
         assert_eq!(
-            result["error"]["code"].as_str(),
+            tool_res["error"]["code"].as_str(),
             Some("E_PERMISSION_DENIED"),
             "Should return E_PERMISSION_DENIED for symlink"
         );
