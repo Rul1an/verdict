@@ -47,14 +47,23 @@ impl CoverageAnalyzer {
         }
     }
 
-    fn analyze(&self, py: Python, traces: Vec<Vec<PyObject>>, threshold: f64) -> PyResult<String> {
+    fn analyze(
+        &self,
+        traces: Vec<Vec<PyObject>>,
+        threshold: f64,
+        py: Python<'_>,
+    ) -> PyResult<String> {
         let mut records = Vec::new();
         let explainer = assay_core::explain::TraceExplainer::new(self.policy.clone());
 
         for (i, trace_objs) in traces.iter().enumerate() {
             let mut tool_calls = Vec::new();
             for obj in trace_objs {
-                let raw: RawToolCall = pythonize::depythonize(obj.as_ref(py))
+                // In PyO3 0.23, PyObject is an alias for Py<PyAny>.
+                // To treat it as a reference for pythonize, we need a Bound<'_, PyAny>.
+                // obj.bind(py) gives us a Bound<'_, PyAny>.
+                let bound = obj.bind(py);
+                let raw: RawToolCall = pythonize::depythonize(bound)
                     .map_err(|e| PyValueError::new_err(format!("Invalid trace format: {}", e)))?;
 
                 let tool = raw
@@ -92,7 +101,7 @@ impl CoverageAnalyzer {
 
 #[pymodule]
 #[pyo3(name = "_native")]
-fn native(_py: Python, m: &PyModule) -> PyResult<()> {
+fn native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Policy>()?;
     m.add_class::<CoverageAnalyzer>()?;
     Ok(())
