@@ -120,17 +120,18 @@ fn test_edge_cases() {
         2,
     );
     // Should be ToolError: error.code == E_POLICY_NOT_FOUND
-    if let Some(res) = resp.get("result") {
-        if let Some(err) = res.get("error") {
-            assert_eq!(
-                err["code"], "E_POLICY_NOT_FOUND",
-                "Should report E_POLICY_NOT_FOUND"
-            );
-        } else {
-            panic!("Expected result.error, got result: {:?}", res);
-        }
+    // Should be ToolError: error.code == E_POLICY_NOT_FOUND
+    let res = resp.get("result").expect("Valid result expected");
+    let content = res["content"][0]["text"].as_str().expect("text content");
+    let tool_res: Value = serde_json::from_str(content).unwrap();
+
+    if let Some(err) = tool_res.get("error") {
+        assert_eq!(
+            err["code"], "E_POLICY_NOT_FOUND",
+            "Should report E_POLICY_NOT_FOUND"
+        );
     } else {
-        panic!("Expected result object, got: {:?}", resp);
+        panic!("Expected result.error, got result: {:?}", tool_res);
     }
 
     // Case 2: Malformed Policy File (check_args)
@@ -153,12 +154,17 @@ fn test_edge_cases() {
     // so we expect result.allowed=false and result.error.code=E_POLICY_PARSE
     assert!(resp.get("result").is_some());
     let res = resp.get("result").unwrap();
+    let content = res["content"][0]["text"].as_str().expect("text content");
+    let tool_res: Value = serde_json::from_str(content).unwrap();
+
     assert_eq!(
-        res.get("allowed").and_then(|v| v.as_bool()),
+        tool_res.get("allowed").and_then(|v| v.as_bool()),
         Some(false),
         "Should explicitly allow: false"
     );
-    let err = res.get("error").expect("Should have error field in result");
+    let err = tool_res
+        .get("error")
+        .expect("Should have error field in result");
     assert_eq!(
         err.get("code").and_then(|s| s.as_str()),
         Some("E_POLICY_PARSE"),
@@ -180,7 +186,11 @@ fn test_edge_cases() {
         }),
         4,
     );
-    let violations = resp["result"]["violations"]
+    let res = resp.get("result").expect("Valid result expected");
+    let content = res["content"][0]["text"].as_str().expect("text content");
+    let tool_res: Value = serde_json::from_str(content).unwrap();
+
+    let violations = tool_res["violations"]
         .as_array()
         .expect("Strict case should return violations, not error");
     // Additional properties not allowed
@@ -208,8 +218,12 @@ fn test_edge_cases() {
         }),
         5,
     );
+    let res = resp.get("result").expect("Valid result expected");
+    let content = res["content"][0]["text"].as_str().expect("text content");
+    let tool_res: Value = serde_json::from_str(content).unwrap();
+
     assert_eq!(
-        resp["result"]["allowed"], false,
+        tool_res["allowed"], false,
         "Should deny action without init"
     );
 
@@ -228,8 +242,12 @@ fn test_edge_cases() {
         }),
         6,
     );
+    let res = resp.get("result").expect("Valid result expected");
+    let content = res["content"][0]["text"].as_str().expect("text content");
+    let tool_res: Value = serde_json::from_str(content).unwrap();
+
     assert_eq!(
-        resp["result"]["allowed"], true,
+        tool_res["allowed"], true,
         "Should allow partial match if exact match is required"
     );
 
@@ -268,17 +286,18 @@ fn test_timeout() {
     );
 
     // Expect E_TIMEOUT
-    if let Some(res) = resp.get("result") {
-        if let Some(err) = res.get("error") {
-            assert_eq!(err["code"], "E_TIMEOUT", "Should report E_TIMEOUT");
-        } else {
-            panic!(
-                "Expected timeout error, got result success/other: {:?}",
-                res
-            );
-        }
+    // Expect E_TIMEOUT
+    let res = resp.get("result").expect("Valid result expected");
+    let content = res["content"][0]["text"].as_str().expect("text content");
+    let tool_res: Value = serde_json::from_str(content).unwrap();
+
+    if let Some(err) = tool_res.get("error") {
+        assert_eq!(err["code"], "E_TIMEOUT", "Should report E_TIMEOUT");
     } else {
-        panic!("Expected result object, got: {:?}", resp);
+        panic!(
+            "Expected timeout error, got result success/other: {:?}",
+            tool_res
+        );
     }
 
     drop(stdin);
