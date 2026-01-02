@@ -6,7 +6,7 @@
   <br>
 </h1>
 
-<h4 align="center">Deterministic Integration Testing for MCP</h4>
+<h4 align="center">MCP Integration Testing & Policy Engine</h4>
 
 <p align="center">
   <a href="https://github.com/Rul1an/assay/actions/workflows/assay.yml">
@@ -18,109 +18,81 @@
   <a href="https://docs.assay.dev">
     <img src="https://img.shields.io/badge/docs-assay.dev-blue" alt="Documentation">
   </a>
-  <a href="LICENSE">
-    <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
-  </a>
 </p>
 
 ---
 
 ## Overview
 
-Assay is a local Testing & Policy Engine for the **Model Context Protocol (MCP)**. It validates JSON-RPC `call_tool` payloads against strict schema policies with sub-millisecond overhead.
+Assay is a toolchain for validating **Model Context Protocol (MCP)** interactions. It enforces strict schema policies and sequence constraints on JSON-RPC `call_tool` payloads.
 
-Designed for high-compliance environments, Assay operates in two modes:
-1.  **CI Validation**: Deterministic replay of recorded JSON-RPC sessions.
-2.  **Runtime Gateway**: Sidecar proxy for enforcing protocol constraints in production.
-
-## Core Capabilities
-
-*   **Protocol Compliance**: Validates tool arguments against strict JSON Schemas.
-*   **Policy Enforcement**: Blocks disallowed tool sequences and argument values.
-*   **Deterministic Replay**: Re-runs recorded sessions without network I/O or model inference.
-*   **Zero-Overhead**: P99 latency <1ms for policy evaluation.
+**Use Cases:**
+*   **CI/CD**: Deterministic replay of tool execution traces to prevent regressions.
+*   **Runtime Gate**: Sidecar proxy to block non-compliant tool calls before they reach production services.
+*   **Compliance**: Audit log validation against defined policy files (`allow/block` lists, arg validation).
 
 ## Installation
 
-**Quick Install (Linux/macOS)**:
+### CLI (Linux/macOS)
 ```bash
 curl -sSL https://assay.dev/install.sh | sh
 ```
 
-**CLI (Rust)**:
-```bash
-cargo install assay-cli --locked
+### GitHub Action
+```yaml
+# .github/workflows/ci.yml
+- uses: assay-dev/assay-action@v1
+  with:
+    policy: policies/agent.yaml
+    traces: traces/
 ```
 
-**SDK (Python)**:
+### Python SDK
 ```bash
 pip install assay-it
 ```
 
 ## Quick Start
 
-### 1. Verification (CI)
+### 1. Define Policy
+Create `assay.yaml` to define allowed tools and constraints:
 
-Validate a recorded session against a policy configuration.
+```yaml
+version: 1
+tools:
+  deploy_prod:
+    args:
+      properties:
+        force: { const: false } # Block force=true
+        cluster: { pattern: "^(eu|us)-west-[0-9]$" }
+    sequence:
+      before: ["check_health"] # Must check health before deploy
+```
+
+### 2. Validate Traces (CI)
+Run against captured Inspector or OTel logs:
 
 ```bash
-# 1. Initialize policy from a recorded session (e.g., via MCP Inspector)
-assay import --format mcp-inspector session.json --init
-
-# 2. Execute validation (Offline, <5ms)
-assay run --config mcp-eval.yaml --strict
+assay run --config assay.yaml --trace-file traces/session.jsonl --strict
 ```
 
-### 2. Enforcement (Runtime)
-
-Run Assay as an MCP Server to validate tool calls before execution.
+### 3. Run Policy Server
+Start an MCP-compliant server to validate calls in real-time:
 
 ```bash
-# Start the policy server
-assay mcp-server --port 3001 --policy policies/
+assay mcp-server --port 3001 --policy .
 ```
 
-**Client Request:**
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "assay_check_args",
-    "arguments": {
-      "target_tool": "deploy_prod",
-      "args": { "force": true }
-    }
-  }
-}
-```
-
-**Server Response (Policy Violation):**
-```json
-{
-  "content": [{ "type": "text", "text": "Policy violation: 'force' is not allowed in production." }],
-  "isError": true
-}
-```
-
-## Architecture
-
-Assay is distributed as a Rust workspace:
-
-| Crate | Function |
-|-------|----------|
-| `assay-core` | Policy evaluation engine and replay logic. |
-| `assay-cli` | Command-line interface for CI integration. |
-| `assay-mcp-server` | MCP-compliant server implementation for runtime hooks. |
-| `assay-metrics` | Core validation logic (args, sequence, blocklist). |
+The server exposes `assay_check_args` and `assay_check_sequence` as MCP tools, allowing agents to self-correct or be blocked by a supervisor.
 
 ## Documentation
 
-Full technical documentation is available at [docs.assay.dev](https://docs.assay.dev).
+Full reference: [docs.assay.dev](https://docs.assay.dev)
 
 *   [Configuration Schema](https://docs.assay.dev/config/)
-*   [CLI Reference](https://docs.assay.dev/cli/)
-*   [MCP Integration Guide](https://docs.assay.dev/mcp/)
+*   [CLI Commands](https://docs.assay.dev/cli/)
+*   [MCP Protocol Integration](https://docs.assay.dev/mcp/)
 
 ## License
 
-MIT License. See [LICENSE](LICENSE).
+MIT.
