@@ -43,7 +43,11 @@ fn test_golden_harness() {
     // Normalize: Remove variable timing info "(0.0s)" or similar if it changes
     // The golden file has "(0.0s)". If it changes to "(0.1s)", test fails.
     let re = regex::Regex::new(r"\(\d+\.\d+s\)").unwrap();
-    let normalized_actual = re.replace_all(&stderr, "(0.0s)").replace("\r\n", "\n").trim().to_string();
+    let normalized_actual = re
+        .replace_all(&stderr, "(0.0s)")
+        .replace("\r\n", "\n")
+        .trim()
+        .to_string();
     let normalized_expected = golden_stderr.replace("\r\n", "\n").trim().to_string();
 
     assert_eq!(
