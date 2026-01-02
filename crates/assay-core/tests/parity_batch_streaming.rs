@@ -23,7 +23,7 @@ fn test_parity_batch_vs_streaming_engine() {
 
     // 3. Batch Simulation: Calling the core engine (as Batch would)
     // In reality, Batch loads policy from file -> parses -> calls metric -> calls engine.
-    // Here we simulate the engine call.
+    // Simulate engine call
     let batch_verdict_valid = evaluate_tool_args(&policy, tool_name, &valid_args);
     let batch_verdict_invalid = evaluate_tool_args(&policy, tool_name, &invalid_args);
 

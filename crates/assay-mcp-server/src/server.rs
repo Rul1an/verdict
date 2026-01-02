@@ -194,7 +194,7 @@ impl Server {
                            args_bytes=args_bytes,
                         );
 
-                        // Metered Billing Telemetry (Celonis Requirement)
+                        // Metered billing telemetry
                         assay_metrics::usage::log_usage_event("policy_check", 1);
 
                         // Execute with timeout
@@ -309,7 +309,7 @@ impl Server {
                                     }
                                 });
 
-                                // Celonis Feature: Agent Awareness
+                                // Agent Awareness
                                 // If we fail open, warn the agent so it can self-regulate (e.g. switch to Safe Mode).
                                 if allow_on_error {
                                     safe_resp["warning"] = serde_json::json!("FAIL-SAFE ACTIVE: Policy engine offline. Proceed with caution (Safe Mode).");
