@@ -1,5 +1,5 @@
+use pyo3::exceptions::{PyFileNotFoundError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::exceptions::{PyValueError, PyRuntimeError, PyFileNotFoundError};
 use serde::Deserialize;
 
 #[pyclass]
@@ -11,8 +11,10 @@ struct Policy {
 impl Policy {
     #[staticmethod]
     fn from_file(path: &str) -> PyResult<Self> {
-        let content = std::fs::read_to_string(path).map_err(|e| PyFileNotFoundError::new_err(e.to_string()))?;
-        let policy: assay_core::model::Policy = serde_yaml::from_str(&content).map_err(|e| PyValueError::new_err(e.to_string()))?;
+        let content = std::fs::read_to_string(path)
+            .map_err(|e| PyFileNotFoundError::new_err(e.to_string()))?;
+        let policy: assay_core::model::Policy =
+            serde_yaml::from_str(&content).map_err(|e| PyValueError::new_err(e.to_string()))?;
         Ok(Policy { inner: policy })
     }
 }
@@ -52,13 +54,16 @@ impl CoverageAnalyzer {
         for (i, trace_objs) in traces.iter().enumerate() {
             let mut tool_calls = Vec::new();
             for obj in trace_objs {
-                 let raw: RawToolCall = pythonize::depythonize(obj.as_ref(py))
+                let raw: RawToolCall = pythonize::depythonize(obj.as_ref(py))
                     .map_err(|e| PyValueError::new_err(format!("Invalid trace format: {}", e)))?;
 
-                 let tool = raw.tool.or(raw.tool_name).unwrap_or_else(|| "unknown".to_string());
-                 let args = raw.args.or(raw.params);
+                let tool = raw
+                    .tool
+                    .or(raw.tool_name)
+                    .unwrap_or_else(|| "unknown".to_string());
+                let args = raw.args.or(raw.params);
 
-                 tool_calls.push(assay_core::explain::ToolCall { tool, args });
+                tool_calls.push(assay_core::explain::ToolCall { tool, args });
             }
 
             let explanation = explainer.explain(&tool_calls);
@@ -69,7 +74,7 @@ impl CoverageAnalyzer {
             for step in explanation.steps {
                 tools_called.push(step.tool);
                 for rule_eval in step.rules_evaluated {
-                     rules_triggered.insert(rule_eval.rule_id);
+                    rules_triggered.insert(rule_eval.rule_id);
                 }
             }
 
