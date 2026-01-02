@@ -354,10 +354,6 @@ sequences:
 
     let report = run_coverage_test(policy, traces, 50.0).await;
 
-    // Debug output if fails
-    if report["rule_coverage"]["total_rules"].as_u64().unwrap() != 2 {
-        println!("Report: {}", serde_json::to_string_pretty(&report).unwrap());
-    }
 
     // Should have 2 rules
     assert_eq!(
