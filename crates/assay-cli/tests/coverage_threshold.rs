@@ -10,26 +10,37 @@ fn test_coverage_min_threshold_failure() {
     let trace_path = dir.path().join("trace.jsonl");
 
     // Write policy
-    fs::write(&policy_path, r#"
+    fs::write(
+        &policy_path,
+        r#"
 version: "1"
 name: threshold_policy
 tools:
     allow: [ToolA, ToolB]
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Trace only calls ToolA (50% coverage)
-    fs::write(&trace_path, r#"
+    fs::write(
+        &trace_path,
+        r#"
 {"type": "call_tool", "tool": "ToolA", "test_id": "test1"}
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     let mut cmd = Command::cargo_bin("assay").unwrap();
     cmd.arg("coverage")
-       .arg("--policy").arg(&policy_path)
-       .arg("--traces").arg(&trace_path)
-       .arg("--min-coverage").arg("80") // Expect failure
-       .assert()
-       .failure()
-       .stderr(contains("Minimum coverage not met"));
+        .arg("--policy")
+        .arg(&policy_path)
+        .arg("--traces")
+        .arg(&trace_path)
+        .arg("--min-coverage")
+        .arg("80") // Expect failure
+        .assert()
+        .failure()
+        .stderr(contains("Minimum coverage not met"));
 }
 
 #[test]
@@ -38,26 +49,37 @@ fn test_coverage_min_threshold_success() {
     let policy_path = dir.path().join("policy.yaml");
     let trace_path = dir.path().join("trace.jsonl");
 
-    fs::write(&policy_path, r#"
+    fs::write(
+        &policy_path,
+        r#"
 version: "1"
 name: threshold_policy
 tools:
     allow: [ToolA, ToolB]
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Trace calls both (100% coverage)
-    fs::write(&trace_path, r#"
+    fs::write(
+        &trace_path,
+        r#"
 {"type": "call_tool", "tool": "ToolA", "test_id": "test1"}
 {"type": "call_tool", "tool": "ToolB", "test_id": "test1"}
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     let mut cmd = Command::cargo_bin("assay").unwrap();
     cmd.arg("coverage")
-       .arg("--policy").arg(&policy_path)
-       .arg("--traces").arg(&trace_path)
-       .arg("--min-coverage").arg("80")
-       .assert()
-       .success();
+        .arg("--policy")
+        .arg(&policy_path)
+        .arg("--traces")
+        .arg(&trace_path)
+        .arg("--min-coverage")
+        .arg("80")
+        .assert()
+        .success();
 }
 
 #[test]
@@ -68,46 +90,67 @@ fn test_coverage_baseline_regression_failure() {
     let trace_partial = dir.path().join("trace_partial.jsonl");
     let baseline_path = dir.path().join("baseline.json");
 
-    fs::write(&policy_path, r#"
+    fs::write(
+        &policy_path,
+        r#"
 version: "1"
 name: regression_policy
 tools:
     allow: [ToolA, ToolB]
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // 1. Generate Baseline (100% coverage)
-    fs::write(&trace_full, r#"
+    fs::write(
+        &trace_full,
+        r#"
 {"type": "call_tool", "tool": "ToolA", "test_id": "test1"}
 {"type": "call_tool", "tool": "ToolB", "test_id": "test1"}
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     let mut cmd = Command::cargo_bin("assay").unwrap();
     cmd.arg("coverage")
-       .arg("--policy").arg(&policy_path)
-       .arg("--traces").arg(&trace_full)
-       .arg("--export-baseline").arg(&baseline_path)
-       .assert()
-       .success();
+        .arg("--policy")
+        .arg(&policy_path)
+        .arg("--traces")
+        .arg(&trace_full)
+        .arg("--export-baseline")
+        .arg(&baseline_path)
+        .assert()
+        .success();
 
     // Verify baseline file exists and has content
     assert!(baseline_path.exists(), "Baseline file should exist");
     let content = fs::read_to_string(&baseline_path).unwrap();
-    assert!(content.contains("\"metric\": \"overall\""), "Baseline should contain overall metric");
+    assert!(
+        content.contains("\"metric\": \"overall\""),
+        "Baseline should contain overall metric"
+    );
     assert!(content.contains("100.0"), "Baseline score should be 100%");
 
     // 2. Run with Partial Trace (50% coverage) + Baseline Check
-    fs::write(&trace_partial, r#"
+    fs::write(
+        &trace_partial,
+        r#"
 {"type": "call_tool", "tool": "ToolA", "test_id": "test1"}
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     let mut cmd = Command::cargo_bin("assay").unwrap();
     cmd.arg("coverage")
-       .arg("--policy").arg(&policy_path)
-       .arg("--traces").arg(&trace_partial)
-       .arg("--baseline").arg(&baseline_path)
-       .assert()
-       .failure()
-       .stderr(contains("REGRESSION DETECTED"));
+        .arg("--policy")
+        .arg(&policy_path)
+        .arg("--traces")
+        .arg(&trace_partial)
+        .arg("--baseline")
+        .arg(&baseline_path)
+        .assert()
+        .failure()
+        .stderr(contains("REGRESSION DETECTED"));
 }
 
 #[test]
@@ -117,52 +160,70 @@ fn test_coverage_baseline_no_regression() {
     let trace_path = dir.path().join("trace.jsonl");
     let baseline_path = dir.path().join("baseline.json");
 
-    fs::write(&policy_path, r#"
+    fs::write(
+        &policy_path,
+        r#"
 version: "1"
 name: stable_policy
 tools:
     allow: [ToolA]
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // 1. Generate Baseline
-    fs::write(&trace_path, r#"
+    fs::write(
+        &trace_path,
+        r#"
 {"type": "call_tool", "tool": "ToolA", "test_id": "test1"}
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     let mut cmd = Command::cargo_bin("assay").unwrap();
     cmd.arg("coverage")
-       .arg("--policy").arg(&policy_path)
-       .arg("--traces").arg(&trace_path)
-       .arg("--export-baseline").arg(&baseline_path)
-       .assert()
-       .success();
+        .arg("--policy")
+        .arg(&policy_path)
+        .arg("--traces")
+        .arg(&trace_path)
+        .arg("--export-baseline")
+        .arg(&baseline_path)
+        .assert()
+        .success();
 
     // 2. Diff against same baseline -> Should Pass
     let mut cmd = Command::cargo_bin("assay").unwrap();
     cmd.arg("coverage")
-       .arg("--policy").arg(&policy_path)
-       .arg("--traces").arg(&trace_path)
-       .arg("--baseline").arg(&baseline_path)
-       .assert()
-       .success()
-       .stderr(contains("No regression against baseline"));
+        .arg("--policy")
+        .arg(&policy_path)
+        .arg("--traces")
+        .arg(&trace_path)
+        .arg("--baseline")
+        .arg(&baseline_path)
+        .assert()
+        .success()
+        .stderr(contains("No regression against baseline"));
 }
 
 #[test]
 fn test_coverage_combined_failures() {
-     let dir = TempDir::new().unwrap();
+    let dir = TempDir::new().unwrap();
     let policy_path = dir.path().join("policy.yaml");
     let trace_full = dir.path().join("trace_full.jsonl");
     let trace_bad = dir.path().join("trace_bad.jsonl");
     let baseline_path = dir.path().join("baseline.json");
 
-    fs::write(&policy_path, r#"
+    fs::write(
+        &policy_path,
+        r#"
 version: "1"
 name: combined_policy
 tools:
   allow: [SafeTool]
   deny: [CriticalTool]
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // 1. Establish Good Baseline (100% Coverage, No Gaps)
     // Wait, deny check is separate. If trace has SafeTool, coverage is 100%. CriticalTool is Unseen in traces.
@@ -180,19 +241,26 @@ tools:
     // Assay currently doesn't fail on violations in `coverage` report (logic is thresholding & gaps).
     // Violations are checked in `run/eval`.
 
-    fs::write(&trace_full, r#"
+    fs::write(
+        &trace_full,
+        r#"
 {"type": "call_tool", "tool": "SafeTool", "test_id": "test1"}
 {"type": "call_tool", "tool": "CriticalTool", "test_id": "test2"}
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Export baseline
     let mut cmd = Command::cargo_bin("assay").unwrap();
     cmd.arg("coverage")
-       .arg("--policy").arg(&policy_path)
-       .arg("--traces").arg(&trace_full)
-       .arg("--export-baseline").arg(&baseline_path)
-       .assert()
-       .success();
+        .arg("--policy")
+        .arg(&policy_path)
+        .arg("--traces")
+        .arg(&trace_full)
+        .arg("--export-baseline")
+        .arg(&baseline_path)
+        .assert()
+        .success();
 
     // 2. Bad Trace:
     // - SafeTool missing (Regression + Low Coverage)
@@ -201,15 +269,19 @@ tools:
 
     let mut cmd = Command::cargo_bin("assay").unwrap();
     cmd.arg("coverage")
-       .arg("--policy").arg(&policy_path) // Needs policy to know DENY list
-       .arg("--traces").arg(&trace_bad)
-       .arg("--baseline").arg(&baseline_path) // Check regression
-       .arg("--min-coverage").arg("80") // Check threshold
-       .assert()
-       .failure()
-       .stderr(contains("REGRESSION DETECTED"))
-       .stderr(contains("High Risk Gaps Detected"))
-       .stderr(contains("Minimum coverage not met"));
+        .arg("--policy")
+        .arg(&policy_path) // Needs policy to know DENY list
+        .arg("--traces")
+        .arg(&trace_bad)
+        .arg("--baseline")
+        .arg(&baseline_path) // Check regression
+        .arg("--min-coverage")
+        .arg("80") // Check threshold
+        .assert()
+        .failure()
+        .stderr(contains("REGRESSION DETECTED"))
+        .stderr(contains("High Risk Gaps Detected"))
+        .stderr(contains("Minimum coverage not met"));
 }
 
 #[test]
@@ -218,24 +290,34 @@ fn test_coverage_high_risk_gap_failure() {
     let policy_path = dir.path().join("policy.yaml");
     let trace_path = dir.path().join("trace.jsonl");
 
-     fs::write(&policy_path, r#"
+    fs::write(
+        &policy_path,
+        r#"
 version: "1"
 name: strict_policy
 tools:
   allow: [SafeTool]
   deny: [CriticalTool]
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     // Trace only safe tool -> CriticalTool is UNSEEN -> High Risk Gap
-    fs::write(&trace_path, r#"
+    fs::write(
+        &trace_path,
+        r#"
 {"type": "call_tool", "tool": "SafeTool", "test_id": "test1"}
-"#).unwrap();
+"#,
+    )
+    .unwrap();
 
     let mut cmd = Command::cargo_bin("assay").unwrap();
     cmd.arg("coverage")
-       .arg("--policy").arg(&policy_path)
-       .arg("--traces").arg(&trace_path)
-       .assert()
-       .failure()
-       .stderr(contains("High Risk Gaps Detected"));
+        .arg("--policy")
+        .arg(&policy_path)
+        .arg("--traces")
+        .arg(&trace_path)
+        .assert()
+        .failure()
+        .stderr(contains("High Risk Gaps Detected"));
 }
