@@ -205,7 +205,7 @@ pub fn cmd_baseline_check(args: crate::cli::args::BaselineCheckArgs) -> anyhow::
     Ok(())
 }
 
-fn capture_git_info() -> Option<assay_core::baseline::GitInfo> {
+pub fn capture_git_info() -> Option<assay_core::baseline::GitInfo> {
     use std::process::Command;
 
     let output = Command::new("git")

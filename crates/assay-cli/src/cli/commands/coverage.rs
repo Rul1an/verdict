@@ -118,7 +118,7 @@ pub async fn cmd_coverage(args: CoverageArgs) -> Result<i32> {
 
     // 4. Analyze
     let analyzer = assay_core::coverage::CoverageAnalyzer::from_policy(&policy);
-    let report = analyzer.analyze(&trace_records, args.threshold);
+    let report = analyzer.analyze(&trace_records, args.min_coverage);
 
     // 5. Output
     match args.format.as_str() {
@@ -137,14 +137,82 @@ pub async fn cmd_coverage(args: CoverageArgs) -> Result<i32> {
         }
     }
 
-    // 6. Exit code
-    if report.meets_threshold {
-        Ok(exit_codes::OK)
-    } else {
+    // 6. Export Baseline (if requested)
+    if let Some(export_path) = args.export_baseline {
+        let suite = cfg.suite.clone(); // Use configured suite name
+        let config_fingerprint = assay_core::baseline::compute_config_fingerprint(&args.config);
+
+        // Capture git info if possible
+        let git_info = super::baseline::capture_git_info(); // Reuse logic from baseline.rs
+
+        let baseline = assay_core::baseline::Baseline::from_coverage_report(
+            &report,
+            suite,
+            config_fingerprint,
+            git_info,
+        );
+
+        baseline
+            .save(&export_path)
+            .context("failed to save baseline")?;
+        eprintln!("Exported baseline to {}", export_path.display());
+    }
+
+    // 7. Check Baseline Regression (if requested)
+    if let Some(baseline_path) = args.baseline {
+        let baseline = assay_core::baseline::Baseline::load(&baseline_path)
+            .context("failed to load baseline for comparison")?;
+
+        // Construct candidate strictly for diffing logic (reuse from_coverage_report)
+        let candidate = assay_core::baseline::Baseline::from_coverage_report(
+            &report,
+            cfg.suite.clone(),
+            "".to_string(), // irrelevant for diff
+            None,
+        );
+
+        let diff = baseline.diff(&candidate);
+
+        if !diff.regressions.is_empty() {
+            eprintln!("\n❌ REGRESSION DETECTED against baseline:");
+            for r in &diff.regressions {
+                eprintln!(
+                    "  - {} metric '{}': {:.2}% -> {:.2}% (delta: {:.2}%)",
+                    r.test_id, r.metric, r.baseline_score, r.candidate_score, r.delta
+                );
+            }
+            // Fail immediately on regression
+            return Ok(exit_codes::TEST_FAILED);
+        } else {
+            eprintln!("\n✅ No regression against baseline.");
+        }
+    }
+
+    // 8. Exit checks
+    let mut clean_pass = true;
+
+    // Check 1: High Risk Gaps
+    if !report.high_risk_gaps.is_empty() {
+        eprintln!("\n🚨 ERROR: High Risk Gaps Detected!");
+        eprintln!("The following DENY-listed tools were not tested:");
+        for gap in &report.high_risk_gaps {
+            eprintln!("  - {}", gap.tool);
+        }
+        clean_pass = false;
+    }
+
+    // Check 2: Min Coverage
+    if !report.meets_threshold {
         eprintln!(
-            "Coverage threshold not met ({:.1}% < {:.1}%)",
+            "\n❌ Coverage threshold not met ({:.1}% < {:.1}%)",
             report.overall_coverage_pct, report.threshold
         );
+        clean_pass = false;
+    }
+
+    if clean_pass {
+        Ok(exit_codes::OK)
+    } else {
         Ok(exit_codes::TEST_FAILED)
     }
 }
