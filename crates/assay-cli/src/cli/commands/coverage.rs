@@ -182,7 +182,10 @@ pub async fn cmd_coverage(args: CoverageArgs) -> Result<i32> {
     }
 
     // 7. Exit code
-    if report.meets_threshold {
+    if !report.high_risk_gaps.is_empty() {
+        eprintln!("High Risk Gap Detected (Critical tools not tested). See report for details.");
+        Ok(exit_codes::TEST_FAILED)
+    } else if report.meets_threshold {
         Ok(exit_codes::OK)
     } else {
         eprintln!(

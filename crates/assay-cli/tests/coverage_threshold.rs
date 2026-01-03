@@ -218,3 +218,67 @@ tests:
         .code(1)
         .stderr(predicate::str::contains("BASELINE REGRESSION DETECTED"));
 }
+
+#[test]
+fn test_coverage_high_risk_failure() {
+    let temp = TempDir::new().unwrap();
+    let config_path = temp.path().join("eval.yaml");
+    let policy_path = temp.path().join("policy.yaml");
+    let traces_path = temp.path().join("traces.jsonl");
+
+    // Policy with Deny rule (CriticalTool)
+    // And Allow (SafeTool)
+    fs::write(
+        &policy_path,
+        r#"
+type: policy
+version: "1.1"
+name: test_policy
+tools:
+  allow: [SafeTool]
+  deny: [CriticalTool]
+"#,
+    )
+    .unwrap();
+
+    // Config referencing policy
+    fs::write(
+        &config_path,
+        r#"
+version: 1
+suite: test_suite
+model: fake
+tests:
+  - id: test1
+    input: "foo"
+    expected:
+       type: args_valid
+       policy: "policy.yaml"
+"#,
+    )
+    .unwrap();
+
+    // Trace covering SafeTool.
+    // CriticalTool is UNSEEN, which for a Deny rule means High Risk Gap.
+    fs::write(
+        &traces_path,
+        r#"
+{"trace_id": "1", "tools": ["SafeTool"], "rules_triggered": []}
+"#,
+    )
+    .unwrap();
+
+    let mut cmd = Command::cargo_bin("assay").unwrap();
+    cmd.arg("coverage")
+        .arg("--config")
+        .arg(&config_path)
+        .arg("--trace-file")
+        .arg(&traces_path)
+        // Even with min-coverage 0, it should fail due to High Risk Gap
+        .arg("--min-coverage")
+        .arg("0")
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(predicate::str::contains("High Risk Gap Detected"));
+}
