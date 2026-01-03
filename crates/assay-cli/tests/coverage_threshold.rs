@@ -1,5 +1,4 @@
 use assert_cmd::Command;
-
 use predicates::str::contains;
 use std::fs;
 use tempfile::TempDir;
@@ -7,11 +6,10 @@ use tempfile::TempDir;
 #[test]
 fn test_coverage_min_threshold_failure() {
     let dir = TempDir::new().unwrap();
-    let config_path = dir.path().join("eval.yaml");
     let policy_path = dir.path().join("policy.yaml");
     let trace_path = dir.path().join("trace.jsonl");
 
-    // Write external policy
+    // Write policy
     fs::write(
         &policy_path,
         r#"
@@ -20,26 +18,6 @@ name: threshold_policy
 tools:
     allow: [ToolA, ToolB]
 "#,
-    )
-    .unwrap();
-
-    // Config references policy using 'sequence_valid' type
-    fs::write(
-        &config_path,
-        format!(
-            r#"
-version: 1
-suite: threshold_test
-model: "dummy-model"
-tests:
-  - id: test1
-    input: "dummy"
-    expected:
-      type: sequence_valid
-      policy: "{}"
-"#,
-            policy_path.display()
-        ),
     )
     .unwrap();
 
@@ -54,9 +32,9 @@ tests:
 
     let mut cmd = Command::cargo_bin("assay").unwrap();
     cmd.arg("coverage")
-        .arg("--config")
-        .arg(&config_path)
-        .arg("--trace-file")
+        .arg("--policy")
+        .arg(&policy_path)
+        .arg("--traces")
         .arg(&trace_path)
         .arg("--min-coverage")
         .arg("80") // Expect failure
@@ -68,7 +46,6 @@ tests:
 #[test]
 fn test_coverage_min_threshold_success() {
     let dir = TempDir::new().unwrap();
-    let config_path = dir.path().join("eval.yaml");
     let policy_path = dir.path().join("policy.yaml");
     let trace_path = dir.path().join("trace.jsonl");
 
@@ -80,25 +57,6 @@ name: threshold_policy
 tools:
     allow: [ToolA, ToolB]
 "#,
-    )
-    .unwrap();
-
-    fs::write(
-        &config_path,
-        format!(
-            r#"
-version: 1
-suite: threshold_test
-model: "dummy-model"
-tests:
-  - id: test1
-    input: "dummy"
-    expected:
-      type: sequence_valid
-      policy: "{}"
-"#,
-            policy_path.display()
-        ),
     )
     .unwrap();
 
@@ -114,9 +72,9 @@ tests:
 
     let mut cmd = Command::cargo_bin("assay").unwrap();
     cmd.arg("coverage")
-        .arg("--config")
-        .arg(&config_path)
-        .arg("--trace-file")
+        .arg("--policy")
+        .arg(&policy_path)
+        .arg("--traces")
         .arg(&trace_path)
         .arg("--min-coverage")
         .arg("80")
@@ -127,7 +85,6 @@ tests:
 #[test]
 fn test_coverage_baseline_regression_failure() {
     let dir = TempDir::new().unwrap();
-    let config_path = dir.path().join("eval.yaml");
     let policy_path = dir.path().join("policy.yaml");
     let trace_full = dir.path().join("trace_full.jsonl");
     let trace_partial = dir.path().join("trace_partial.jsonl");
@@ -144,25 +101,6 @@ tools:
     )
     .unwrap();
 
-    fs::write(
-        &config_path,
-        format!(
-            r#"
-version: 1
-suite: regression_test
-model: "dummy-model"
-tests:
-  - id: test1
-    input: "dummy"
-    expected:
-      type: sequence_valid
-      policy: "{}"
-"#,
-            policy_path.display()
-        ),
-    )
-    .unwrap();
-
     // 1. Generate Baseline (100% coverage)
     fs::write(
         &trace_full,
@@ -175,9 +113,9 @@ tests:
 
     let mut cmd = Command::cargo_bin("assay").unwrap();
     cmd.arg("coverage")
-        .arg("--config")
-        .arg(&config_path)
-        .arg("--trace-file")
+        .arg("--policy")
+        .arg(&policy_path)
+        .arg("--traces")
         .arg(&trace_full)
         .arg("--export-baseline")
         .arg(&baseline_path)
@@ -195,12 +133,16 @@ tests:
 
     let mut cmd = Command::cargo_bin("assay").unwrap();
     cmd.arg("coverage")
-        .arg("--config")
-        .arg(&config_path)
-        .arg("--trace-file")
+        .arg("--policy")
+        .arg(&policy_path)
+        .arg("--traces")
         .arg(&trace_partial)
         .arg("--baseline")
         .arg(&baseline_path)
+        // We still need config arg?
+        // Error "failed to load config" in my logic fallback?
+        // My logic: if policy provided, skip config load.
+        // So explicit --policy overrides config requirement.
         .assert()
         .failure()
         .stderr(contains("REGRESSION DETECTED"));
@@ -209,7 +151,6 @@ tests:
 #[test]
 fn test_coverage_high_risk_gap_failure() {
     let dir = TempDir::new().unwrap();
-    let config_path = dir.path().join("eval.yaml");
     let policy_path = dir.path().join("policy.yaml");
     let trace_path = dir.path().join("trace.jsonl");
 
@@ -225,25 +166,6 @@ tools:
     )
     .unwrap();
 
-    fs::write(
-        &config_path,
-        format!(
-            r#"
-version: 1
-suite: high_risk_test
-model: "dummy-model"
-tests:
-  - id: test1
-    input: "dummy"
-    expected:
-      type: sequence_valid
-      policy: "{}"
-"#,
-            policy_path.display()
-        ),
-    )
-    .unwrap();
-
     // Trace only safe tool -> CriticalTool is UNSEEN -> High Risk Gap
     fs::write(
         &trace_path,
@@ -255,9 +177,9 @@ tests:
 
     let mut cmd = Command::cargo_bin("assay").unwrap();
     cmd.arg("coverage")
-        .arg("--config")
-        .arg(&config_path)
-        .arg("--trace-file")
+        .arg("--policy")
+        .arg(&policy_path)
+        .arg("--traces")
         .arg(&trace_path)
         .assert()
         .failure()

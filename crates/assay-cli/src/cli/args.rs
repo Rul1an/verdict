@@ -524,6 +524,9 @@ pub struct CoverageArgs {
     pub config: std::path::PathBuf,
 
     #[arg(long)]
+    pub policy: Option<PathBuf>,
+
+    #[arg(long, alias = "traces")]
     pub trace_file: std::path::PathBuf,
 
     #[arg(long, default_value_t = 0.0)]

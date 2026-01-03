@@ -3,42 +3,53 @@ use crate::cli::args::CoverageArgs;
 use anyhow::{Context, Result};
 
 pub async fn cmd_coverage(args: CoverageArgs) -> Result<i32> {
-    // 1. Load Config
-    let cfg = assay_core::config::load_config(&args.config, false, false)
-        .context("failed to load config")?;
+    // 1. Determine Policy & Context
+    let (policy_path, suite_name, config_fingerprint) = if let Some(p) = args.policy {
+        // Explicit Policy Mode
+        let suite = p
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("manual_policy")
+            .to_string();
 
-    // 2. Extract Policy
-    // EvalConfig doesn't have a global policy field (yet).
-    // We scan tests for a referenced policy.
-    let mut policy_paths = std::collections::HashSet::new();
-    for test in &cfg.tests {
-        if let Some(path) = test.expected.get_policy_path() {
-            policy_paths.insert(path.to_string());
-        }
-        // Also check assertions
-        if let Some(assertions) = &test.assertions {
-            for _assertion in assertions {
-                // Context: Assertions might reference policies, but we currently relay on 'expected' block.
+        // Fingerpint the policy file itself as the "config"
+        let fp = assay_core::baseline::compute_config_fingerprint(&p);
+
+        (p, suite, fp)
+    } else {
+        // Fallback: Try to infer from config (Legacy)
+        let cfg = assay_core::config::load_config(&args.config, false, false)
+            .context("failed to load config (and no --policy provided)")?;
+
+        let mut policy_paths = std::collections::HashSet::new();
+        for test in &cfg.tests {
+            if let Some(path) = test.expected.get_policy_path() {
+                policy_paths.insert(path.to_string());
             }
         }
-    }
 
-    if policy_paths.is_empty() {
-        anyhow::bail!("No policy referenced in config (checked expected block). explicit --policy arg not supported yet.");
-    }
+        if policy_paths.is_empty() {
+            anyhow::bail!("No policy provided via --policy, and none referenced in config.");
+        }
 
-    if policy_paths.len() > 1 {
-        eprintln!(
-            "warning: multiple policies found in config: {:?}. Using the first one.",
-            policy_paths
-        );
-    }
+        if policy_paths.len() > 1 {
+            eprintln!(
+                "warning: multiple policies found in config: {:?}. Using the first one.",
+                policy_paths
+            );
+        }
 
-    let policy_rel_path = policy_paths.iter().next().unwrap();
-    // Resolve relative to config file
-    let config_dir = args.config.parent().unwrap_or(std::path::Path::new("."));
-    let policy_path = config_dir.join(policy_rel_path);
+        // Resolve relative to config file
+        let rel = policy_paths.iter().next().unwrap();
+        let config_dir = args.config.parent().unwrap_or(std::path::Path::new("."));
+        let policy_path = config_dir.join(rel);
 
+        let fp = assay_core::baseline::compute_config_fingerprint(&args.config);
+
+        (policy_path, cfg.suite, fp)
+    };
+
+    // 2. Load Policy
     let policy_content = tokio::fs::read_to_string(&policy_path)
         .await
         .with_context(|| format!("failed to read policy file: {}", policy_path.display()))?;
@@ -139,16 +150,13 @@ pub async fn cmd_coverage(args: CoverageArgs) -> Result<i32> {
 
     // 6. Export Baseline (if requested)
     if let Some(export_path) = args.export_baseline {
-        let suite = cfg.suite.clone(); // Use configured suite name
-        let config_fingerprint = assay_core::baseline::compute_config_fingerprint(&args.config);
-
         // Capture git info if possible
         let git_info = super::baseline::capture_git_info(); // Reuse logic from baseline.rs
 
         let baseline = assay_core::baseline::Baseline::from_coverage_report(
             &report,
-            suite,
-            config_fingerprint,
+            suite_name.clone(),
+            config_fingerprint.clone(),
             git_info,
         );
 
@@ -166,7 +174,7 @@ pub async fn cmd_coverage(args: CoverageArgs) -> Result<i32> {
         // Construct candidate strictly for diffing logic (reuse from_coverage_report)
         let candidate = assay_core::baseline::Baseline::from_coverage_report(
             &report,
-            cfg.suite.clone(),
+            suite_name.clone(),
             "".to_string(), // irrelevant for diff
             None,
         );
