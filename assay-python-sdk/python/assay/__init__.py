@@ -1,7 +1,7 @@
-from ._native import Policy, CoverageAnalyzer
+from ._native import Policy, CoverageAnalyzer, AssayClient
 import json
 
-__all__ = ["Policy", "CoverageAnalyzer", "analyze_coverage"]
+__all__ = ["Policy", "CoverageAnalyzer", "AssayClient", "analyze_coverage"]
 
 def analyze_coverage(policy_path: str, traces: list, threshold: float = 80.0) -> dict:
     """

@@ -104,5 +104,45 @@ impl CoverageAnalyzer {
 fn native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Policy>()?;
     m.add_class::<CoverageAnalyzer>()?;
+    m.add_class::<AssayClient>()?;
     Ok(())
+}
+
+#[pyclass]
+struct AssayClient {
+    trace_file: Option<std::path::PathBuf>,
+}
+
+#[pymethods]
+impl AssayClient {
+    #[new]
+    #[pyo3(signature = (trace_file=None))]
+    fn new(trace_file: Option<String>) -> Self {
+        AssayClient {
+            trace_file: trace_file.map(std::path::PathBuf::from),
+        }
+    }
+
+    fn record_trace(&self, trace: PyObject, py: Python<'_>) -> PyResult<()> {
+        if let Some(path) = &self.trace_file {
+            let mut file = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(path)
+                .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+
+            let bound = trace.bind(py);
+            // We validate it is a JSON-serializable object by converting to Value
+            let value: serde_json::Value = pythonize::depythonize(bound)
+                .map_err(|e| PyValueError::new_err(format!("Invalid trace format: {}", e)))?;
+
+            // Write as JSONL
+            use std::io::Write;
+            let line = serde_json::to_string(&value)
+                .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+
+            writeln!(file, "{}", line).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+        }
+        Ok(())
+    }
 }
