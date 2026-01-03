@@ -30,7 +30,7 @@ tools:
     )
     .unwrap();
 
-    let mut cmd = Command::cargo_bin("assay").unwrap();
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_assay"));
     cmd.arg("coverage")
         .arg("--policy")
         .arg(&policy_path)
@@ -70,7 +70,7 @@ tools:
     )
     .unwrap();
 
-    let mut cmd = Command::cargo_bin("assay").unwrap();
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_assay"));
     cmd.arg("coverage")
         .arg("--policy")
         .arg(&policy_path)
@@ -111,7 +111,7 @@ tools:
     )
     .unwrap();
 
-    let mut cmd = Command::cargo_bin("assay").unwrap();
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_assay"));
     cmd.arg("coverage")
         .arg("--policy")
         .arg(&policy_path)
@@ -140,7 +140,7 @@ tools:
     )
     .unwrap();
 
-    let mut cmd = Command::cargo_bin("assay").unwrap();
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_assay"));
     cmd.arg("coverage")
         .arg("--policy")
         .arg(&policy_path)
@@ -180,7 +180,7 @@ tools:
     )
     .unwrap();
 
-    let mut cmd = Command::cargo_bin("assay").unwrap();
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_assay"));
     cmd.arg("coverage")
         .arg("--policy")
         .arg(&policy_path)
@@ -192,7 +192,7 @@ tools:
         .success();
 
     // 2. Diff against same baseline -> Should Pass
-    let mut cmd = Command::cargo_bin("assay").unwrap();
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_assay"));
     cmd.arg("coverage")
         .arg("--policy")
         .arg(&policy_path)
@@ -251,7 +251,7 @@ tools:
     .unwrap();
 
     // Export baseline
-    let mut cmd = Command::cargo_bin("assay").unwrap();
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_assay"));
     cmd.arg("coverage")
         .arg("--policy")
         .arg(&policy_path)
@@ -267,7 +267,7 @@ tools:
     // - CriticalTool missing (High Risk Gap)
     fs::write(&trace_bad, "").unwrap(); // Empty trace -> 0 coverage, Gap
 
-    let mut cmd = Command::cargo_bin("assay").unwrap();
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_assay"));
     cmd.arg("coverage")
         .arg("--policy")
         .arg(&policy_path) // Needs policy to know DENY list
@@ -311,7 +311,7 @@ tools:
     )
     .unwrap();
 
-    let mut cmd = Command::cargo_bin("assay").unwrap();
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_assay"));
     cmd.arg("coverage")
         .arg("--policy")
         .arg(&policy_path)
