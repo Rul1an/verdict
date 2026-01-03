@@ -120,7 +120,51 @@ pub async fn cmd_coverage(args: CoverageArgs) -> Result<i32> {
     let analyzer = assay_core::coverage::CoverageAnalyzer::from_policy(&policy);
     let report = analyzer.analyze(&trace_records, args.min_coverage);
 
-    // 5. Output
+    // 5. Baseline Operations
+    let config_fingerprint = assay_core::baseline::compute_config_fingerprint(&args.config);
+    let current_baseline = create_coverage_baseline(&report, cfg.suite.clone(), config_fingerprint);
+
+    if let Some(export_path) = &args.export_baseline {
+        current_baseline
+            .save(export_path)
+            .context("failed to save baseline")?;
+        eprintln!("Exported coverage baseline to {}", export_path.display());
+    }
+
+    if let Some(baseline_path) = &args.baseline {
+        let baseline = assay_core::baseline::Baseline::load(baseline_path)
+            .context("failed to load baseline")?;
+
+        // Validate (optional constraint, warn only)
+        if let Err(e) = baseline.validate(&cfg.suite, &current_baseline.config_fingerprint) {
+            eprintln!("warning: checking against invalid baseline: {}", e);
+        }
+
+        let diff = baseline.diff(&current_baseline);
+
+        if !diff.regressions.is_empty() {
+            eprintln!();
+            eprintln!("BASELINE REGRESSION DETECTED:");
+            for reg in diff.regressions {
+                eprintln!(
+                    "  [!] {} {}: {:.1}% -> {:.1}% (delta: {:.1}%)",
+                    reg.test_id, reg.metric, reg.baseline_score, reg.candidate_score, reg.delta
+                );
+            }
+            return Ok(exit_codes::TEST_FAILED);
+        } else if !diff.improvements.is_empty() {
+            eprintln!();
+            eprintln!("Baseline Improvements:");
+            for imp in diff.improvements {
+                eprintln!(
+                    "  [+] {} {}: {:.1}% -> {:.1}% (delta: +{:.1}%)",
+                    imp.test_id, imp.metric, imp.baseline_score, imp.candidate_score, imp.delta
+                );
+            }
+        }
+    }
+
+    // 6. Output
     match args.format.as_str() {
         "json" => {
             println!("{}", serde_json::to_string_pretty(&report)?);
@@ -137,7 +181,7 @@ pub async fn cmd_coverage(args: CoverageArgs) -> Result<i32> {
         }
     }
 
-    // 6. Exit code
+    // 7. Exit code
     if report.meets_threshold {
         Ok(exit_codes::OK)
     } else {
@@ -146,6 +190,43 @@ pub async fn cmd_coverage(args: CoverageArgs) -> Result<i32> {
             report.overall_coverage_pct, report.threshold
         );
         Ok(exit_codes::TEST_FAILED)
+    }
+}
+
+fn create_coverage_baseline(
+    report: &assay_core::coverage::CoverageReport,
+    suite: String,
+    config_fingerprint: String,
+) -> assay_core::baseline::Baseline {
+    let entries = vec![
+        assay_core::baseline::BaselineEntry {
+            test_id: "coverage".to_string(),
+            metric: "overall".to_string(),
+            score: report.overall_coverage_pct,
+            meta: None,
+        },
+        assay_core::baseline::BaselineEntry {
+            test_id: "coverage".to_string(),
+            metric: "tool_coverage".to_string(),
+            score: report.tool_coverage.coverage_pct,
+            meta: None,
+        },
+        assay_core::baseline::BaselineEntry {
+            test_id: "coverage".to_string(),
+            metric: "rule_coverage".to_string(),
+            score: report.rule_coverage.coverage_pct,
+            meta: None,
+        },
+    ];
+
+    assay_core::baseline::Baseline {
+        schema_version: 1,
+        suite,
+        assay_version: env!("CARGO_PKG_VERSION").to_string(),
+        created_at: chrono::Utc::now().to_rfc3339(),
+        config_fingerprint,
+        git_info: None,
+        entries,
     }
 }
 

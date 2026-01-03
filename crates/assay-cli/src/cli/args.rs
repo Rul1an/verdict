@@ -529,6 +529,12 @@ pub struct CoverageArgs {
     #[arg(long, default_value_t = 0.0)]
     pub min_coverage: f64,
 
+    #[arg(long)]
+    pub baseline: Option<std::path::PathBuf>,
+
+    #[arg(long)]
+    pub export_baseline: Option<std::path::PathBuf>,
+
     #[arg(long, default_value = "text")]
     pub format: String, // text|json|markdown|github
 }

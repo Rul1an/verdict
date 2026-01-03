@@ -120,3 +120,101 @@ tests:
         .code(1) // TEST_FAILED code is 1
         .stderr(predicate::str::contains("Coverage threshold not met"));
 }
+
+#[test]
+fn test_coverage_baseline_export_and_check() {
+    let temp = TempDir::new().unwrap();
+    let config_path = temp.path().join("eval.yaml");
+    let policy_path = temp.path().join("policy.yaml");
+    let traces_path = temp.path().join("traces.jsonl");
+    let baseline_path = temp.path().join("baseline.json");
+
+    // Policy with 2 tools
+    fs::write(
+        &policy_path,
+        r#"
+type: policy
+version: "1.1"
+name: test_policy
+tools:
+  allow: [ToolA, ToolB]
+"#,
+    )
+    .unwrap();
+
+    // Config referencing policy
+    fs::write(
+        &config_path,
+        r#"
+version: 1
+suite: test_suite
+model: fake
+tests:
+  - id: test1
+    input: "foo"
+    expected:
+       type: args_valid
+       policy: "policy.yaml"
+"#,
+    )
+    .unwrap();
+
+    // Trace covering both tools (100% coverage)
+    fs::write(
+        &traces_path,
+        r#"
+{"trace_id": "1", "tools": ["ToolA", "ToolB"], "rules_triggered": []}
+"#,
+    )
+    .unwrap();
+
+    // 1. Export Baseline
+    let mut cmd = Command::cargo_bin("assay").unwrap();
+    cmd.arg("coverage")
+        .arg("--config")
+        .arg(&config_path)
+        .arg("--trace-file")
+        .arg(&traces_path)
+        .arg("--export-baseline")
+        .arg(&baseline_path)
+        .assert()
+        .success();
+
+    assert!(baseline_path.exists());
+
+    // 2. Check Baseline (should pass, equal)
+    let mut cmd = Command::cargo_bin("assay").unwrap();
+    cmd.arg("coverage")
+        .arg("--config")
+        .arg(&config_path)
+        .arg("--trace-file")
+        .arg(&traces_path)
+        .arg("--baseline")
+        .arg(&baseline_path)
+        .assert()
+        .success();
+
+    // 3. Regression Test
+    // Reduce coverage to 50% (only ToolA)
+    let traces_bad_path = temp.path().join("traces_bad.jsonl");
+    fs::write(
+        &traces_bad_path,
+        r#"
+{"trace_id": "1", "tools": ["ToolA"], "rules_triggered": []}
+"#,
+    )
+    .unwrap();
+
+    let mut cmd = Command::cargo_bin("assay").unwrap();
+    cmd.arg("coverage")
+        .arg("--config")
+        .arg(&config_path)
+        .arg("--trace-file")
+        .arg(&traces_bad_path)
+        .arg("--baseline")
+        .arg(&baseline_path)
+        .assert()
+        .failure()
+        .code(1)
+        .stderr(predicate::str::contains("BASELINE REGRESSION DETECTED"));
+}
