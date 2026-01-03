@@ -104,5 +104,79 @@ impl CoverageAnalyzer {
 fn native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Policy>()?;
     m.add_class::<CoverageAnalyzer>()?;
+    m.add_class::<AssayClient>()?;
     Ok(())
+}
+
+#[pyclass]
+/// A client for recording Assay traces from Python.
+struct AssayClient {
+    // Thread-safe writer to keep file open and avoid race conditions within the process.
+    writer: Option<std::sync::Mutex<std::io::BufWriter<std::fs::File>>>,
+}
+
+#[pymethods]
+impl AssayClient {
+    #[new]
+    #[pyo3(signature = (trace_file=None))]
+    /// Create a new AssayClient.
+    ///
+    /// Args:
+    ///     trace_file (Optional[str]): Path to the file where traces will be recorded (JSONL).
+    ///                                 If None, `record_trace` will raise an error.
+    fn new(trace_file: Option<String>) -> PyResult<Self> {
+        let writer = if let Some(path_str) = trace_file {
+            let path = std::path::Path::new(&path_str);
+            let file = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(path)
+                .map_err(|e| {
+                    PyRuntimeError::new_err(format!("Failed to open trace file: {}", e))
+                })?;
+            Some(std::sync::Mutex::new(std::io::BufWriter::new(file)))
+        } else {
+            None
+        };
+        Ok(AssayClient { writer })
+    }
+
+    /// Record a trace object to the configured trace file.
+    ///
+    /// Args:
+    ///     trace (Any): A JSON-serializable object (usually a dict) representing the trace.
+    ///
+    /// Raises:
+    ///     RuntimeError: If no trace_file was configured or writing fails.
+    ///     ValueError: If the trace object cannot be serialized to JSON.
+    fn record_trace(&self, trace: PyObject, py: Python<'_>) -> PyResult<()> {
+        if let Some(mutex) = &self.writer {
+            let mut writer = mutex
+                .lock()
+                .map_err(|_| PyRuntimeError::new_err("Failed to lock trace file writer"))?;
+
+            let bound = trace.bind(py);
+            // We validate it is a JSON-serializable object by converting to Value
+            let value: serde_json::Value = pythonize::depythonize(bound)
+                .map_err(|e| PyValueError::new_err(format!("Invalid trace format: {}", e)))?;
+
+            // Write as JSONL
+            use std::io::Write;
+            serde_json::to_writer(&mut *writer, &value).map_err(|e| {
+                PyRuntimeError::new_err(format!("Failed to serialize trace: {}", e))
+            })?;
+            writeln!(writer)
+                .map_err(|e| PyRuntimeError::new_err(format!("Failed to write newline: {}", e)))?;
+
+            // Flush to ensure data is written immediately (useful for logs/traces)
+            writer
+                .flush()
+                .map_err(|e| PyRuntimeError::new_err(format!("Failed to flush: {}", e)))?;
+        } else {
+            return Err(PyRuntimeError::new_err(
+                "trace_file is not configured; provide trace_file when creating AssayClient to enable record_trace",
+            ));
+        }
+        Ok(())
+    }
 }
