@@ -524,10 +524,19 @@ pub struct CoverageArgs {
     pub config: std::path::PathBuf,
 
     #[arg(long)]
+    pub policy: Option<PathBuf>,
+
+    #[arg(long, alias = "traces")]
     pub trace_file: std::path::PathBuf,
 
     #[arg(long, default_value_t = 0.0)]
-    pub threshold: f64,
+    pub min_coverage: f64,
+
+    #[arg(long)]
+    pub baseline: Option<PathBuf>,
+
+    #[arg(long)]
+    pub export_baseline: Option<PathBuf>,
 
     #[arg(long, default_value = "text")]
     pub format: String, // text|json|markdown|github
