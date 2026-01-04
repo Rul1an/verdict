@@ -14,7 +14,8 @@ def policy_file():
         }
     }
     with tempfile.NamedTemporaryFile(suffix=".yaml", delete=False) as tmp:
-        yaml.dump(data, open(tmp.name, 'w'))
+        with open(tmp.name, 'w') as f:
+            yaml.dump(data, f)
         path = tmp.name
     yield path
     if os.path.exists(path):

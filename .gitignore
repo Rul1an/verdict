@@ -26,6 +26,7 @@ htmlcov/
 
 # Release & Smoke Test
 .venv_smoke/
+.venv_test/
 smoke_test_ws/
 verdict_sdk.egg-info/
 assay_python_sdk.egg-info/
